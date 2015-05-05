@@ -1,0 +1,17 @@
+{
+    "browser": true,
+    "browserify": true,
+    "unused": true,
+    "undef": true,
+    "-W018": true,
+    "globals": {
+        "$": true,
+        "unsafeWindow": true,
+        "GM_xmlhttpRequest": true,
+        "GM_addStyle": true,
+        "EconCC": true,
+        "page": true,
+        "moment": true,
+        "console": true
+    }
+}

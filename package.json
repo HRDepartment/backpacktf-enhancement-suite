@@ -1,0 +1,9 @@
+{
+  "name": "backpack-enhancement-suite",
+  "devDependencies": {
+    "browserify": "*",
+    "gulp": "*",
+    "gulp-header": "*",
+    "vinyl-source-stream": "*"
+  }
+}
