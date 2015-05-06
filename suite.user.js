@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.0.0
+// @version      1.0.1
 // @description  Enhances your backpack.tf experience.
 // @match        *://backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -560,7 +560,8 @@ module.exports = load;
 },{"../page":15,"../preferences":16,"../script":18,"./pricetags":8}],6:[function(require,module,exports){
 var Prefs = require('../preferences'),
     MenuActions = require('../menu-actions'),
-    Script = require('../script');
+    Script = require('../script'),
+    Page = require('../page');
 
 function addRemoveAllListings() {
     MenuActions.addAction({
@@ -582,33 +583,44 @@ function addRemoveAllListings() {
 function global() {
     var account = $('#profile-dropdown-container a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
-        moreCache = {}, moreLoading = {};
+        more = $('.text-more'),
+        moreCache = {},
+        moreLoading = {};
 
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if ($('.listing-remove').length) addRemoveAllListings();
 
-    $('.text-more').mouseover(function() {
-        var $this = $(this),
-            url = $this.closest('.vote').find('.vote-stats li:eq(1) a').attr('href');
+    if (!more.length) return;
 
-        function showPopover(html) {
-            $this.popover({content: html, html: true}).popover('show');
-        }
+    Page.addPopovers(more, $('.row:eq(4)'), {
+        next: function (fn) {
+            var $this = $(this),
+                vote = $this.closest('.vote'),
+                url = vote.find('.vote-stats li:eq(1) a').attr('href');
 
-        if (moreCache[url]) return showPopover(moreCache[url]);
-        if (moreLoading[url]) return;
+            function showPopover(html) {
+                fn({
+                    content: '"' + html.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, "\\n") + '"',
+                    placement: '"right"'
+                });
+            }
 
-        moreLoading[url] = true;
-        $.get(url).done(function (page) {
-            var html = $($.parseHTML(page)).find('.op .body').html();
-            moreCache[url] = html;
+            if (moreCache[url]) return showPopover(moreCache[url]);
+            if (moreLoading[url]) return;
 
-            showPopover(html);
-        }).always(function () {
-            moreLoading[url] = false;
-        });
-    }).mouseout(function () { $(this).popover('hide'); });
+            moreLoading[url] = true;
+            $.get(url).done(function (page) {
+                var html = $($.parseHTML(page)).find('.op .body').html();
+                moreCache[url] = html;
+
+                showPopover(html);
+            }).always(function () {
+                moreLoading[url] = false;
+            });
+        },
+        delay: false
+    });
 }
 
 function index() {
@@ -653,7 +665,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":14,"../preferences":16,"../script":18}],7:[function(require,module,exports){
+},{"../menu-actions":14,"../page":15,"../preferences":16,"../script":18}],7:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
@@ -1984,7 +1996,8 @@ var BadgeSupporter = {
 };
 
 var users = {
-    "76561198070299574": {badges: [BadgeSelfMade, BadgeSupporter], color: '#028482'}
+    "76561198070299574": {badges: [BadgeSelfMade], color: '#028482'},
+    "76561198039453751": {badges: [BadgeSupporter]}
 };
 
 function renderUserBadges(badges) {
@@ -2144,51 +2157,58 @@ exports.addTooltips = function (elem, container) {
     elem.tooltip({container: container || 'body'});
 };
 
-// Copypastas for Firefox support
-exports.addItemPopovers = function (item, container) {
-    item.mouseenter(function() {
+// handlers{fn(id)|str content, fn(id)|str placement, fn(id) show, fn(id) hide}
+// fn is bound to this, remember to wrap strings in ""
+// if content/placement is str, variable elem refers to the element
+exports.addPopovers = function (item, container, handlers) {
+    item.each(function () {
         var $this = $(this),
-            id = (Math.random() + "") + (Date.now() + "");
+            self = this;
+        var id = (Math.random() + "").substr(2) + (Date.now() + "");
 
-        if ($this.parent().hasClass('item-list-links')) {
-            return;
-        }
-
-        // Firefox support
-        $this.attr('data-bes-id', id);
-        Script.exec('(function () {'+
-                    'var jq = $("[data-bes-id=\\"' + id + '\\"]");'+
-                    'jq.popover({animation: false, html: true, trigger: "manual", placement: window.get_popover_placement, content: window.createDetails(jq)});'+
-                    '}());');
-
-        setTimeout(function () {
-            if ($this.filter(':hover').length) {
-                // Firefox support
-                Script.exec('$(".popover").remove(); $("[data-bes-id=\\"' + id + '\\"]").popover("show"); $(".popover").css("padding", 0);');
-                $('#search-bazaar').click(function () {
-                    unsafeWindow.searchBazaar($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
-                });
-
-                $('#search-outpost').click(function () {
-                    unsafeWindow.searchOutpost($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
-                });
-
-                $('#search-lounge').click(function() {
-                    unsafeWindow.searchLounge($this.data('defindex'), $this.data('quality'));
-                });
+        $this.mouseenter(function() {
+            if ($this.parent().hasClass('item-list-links')) {
+                return;
             }
-        }, 300);
-    }).mouseleave(function () {
-        var $this = $(this);
 
-        setTimeout(function () {
-            if (!$this.filter(':hover').length && !$('.popover:hover').length) {
+            function next(h) {
+                var content, placement,
+                    handles = handlers;
+
+                if (h) handles = h;
+
+                content = typeof handles.content === "function" ? handles.content.call(this, id) : handles.content;
+                placement = typeof handles.placement === "function" ? handles.placement.call(this, id) : handles.placement;
+
                 // Firefox support
-                Script.exec('$("[data-bes-id=\\"' + $this.attr('data-bes-id') + '\\"]").popover("hide");');
+                $this.attr('data-bes-id', id);
+                Script.exec('(function () {'+
+                            'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
+                            'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
+                            '}());');
+
+                setTimeout(function () {
+                    if ($this.filter(':hover').length) {
+                        // Firefox support
+                        Script.exec('$(".popover").remove(); $("[data-bes-id=\\"' + id + '\\"]").popover("show"); $(".popover").css("padding", 0);');
+                        if (handles.show) handles.show.call(self, id);
+                    }
+                }, handles.delay ? 300 : 0);
             }
-        }, 100);
-    }).on('shown.bs.popover', function () {
-        Script.exec("$('.popover-timeago').timeago();");
+
+            if (handlers.next) handlers.next.call(this, next.bind(this));
+            else next.call(this);
+        }).mouseleave(function () {
+            setTimeout(function () {
+                if (!$this.filter(':hover').length && !$('.popover:hover').length) {
+                    // Firefox support
+                    Script.exec('$("[data-bes-id=\\"' + $this.attr('data-bes-id') + '\\"]").popover("hide");');
+                    if (handlers.hide) handlers.hide.call(self, id);
+                }
+            }, 100);
+        }).on('shown.bs.popover', function () {
+            Script.exec("$('.popover-timeago').timeago();");
+        });
     });
 
     if (container) {
@@ -2202,6 +2222,29 @@ exports.addItemPopovers = function (item, container) {
             }, 300);
         });
     }
+
+    return item;
+};
+
+exports.addItemPopovers = function (item, container) {
+    exports.addPopovers(item, container, {
+        content: 'window.createDetails(elem)',
+        placement: 'window.get_popover_placement',
+        show: function () {
+            var $this = $(this);
+            $('#search-bazaar').click(function () {
+                unsafeWindow.searchBazaar($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
+            });
+
+            $('#search-outpost').click(function () {
+                unsafeWindow.searchOutpost($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
+            });
+
+            $('#search-lounge').click(function() {
+                unsafeWindow.searchLounge($this.data('defindex'), $this.data('quality'));
+            });
+        }
+    });
 };
 
 exports.escapeHtml = function (message) {
@@ -2210,7 +2253,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.0.0';
+exports.SUITE_VERSION = '1.0.1';
 
 },{"./script":18}],16:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');

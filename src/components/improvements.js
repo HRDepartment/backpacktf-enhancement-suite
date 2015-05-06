@@ -1,6 +1,7 @@
 var Prefs = require('../preferences'),
     MenuActions = require('../menu-actions'),
-    Script = require('../script');
+    Script = require('../script'),
+    Page = require('../page');
 
 function addRemoveAllListings() {
     MenuActions.addAction({
@@ -22,33 +23,44 @@ function addRemoveAllListings() {
 function global() {
     var account = $('#profile-dropdown-container a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
-        moreCache = {}, moreLoading = {};
+        more = $('.text-more'),
+        moreCache = {},
+        moreLoading = {};
 
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if ($('.listing-remove').length) addRemoveAllListings();
 
-    $('.text-more').mouseover(function() {
-        var $this = $(this),
-            url = $this.closest('.vote').find('.vote-stats li:eq(1) a').attr('href');
+    if (!more.length) return;
 
-        function showPopover(html) {
-            $this.popover({content: html, html: true}).popover('show');
-        }
+    Page.addPopovers(more, $('.row:eq(4)'), {
+        next: function (fn) {
+            var $this = $(this),
+                vote = $this.closest('.vote'),
+                url = vote.find('.vote-stats li:eq(1) a').attr('href');
 
-        if (moreCache[url]) return showPopover(moreCache[url]);
-        if (moreLoading[url]) return;
+            function showPopover(html) {
+                fn({
+                    content: '"' + html.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, "\\n") + '"',
+                    placement: '"right"'
+                });
+            }
 
-        moreLoading[url] = true;
-        $.get(url).done(function (page) {
-            var html = $($.parseHTML(page)).find('.op .body').html();
-            moreCache[url] = html;
+            if (moreCache[url]) return showPopover(moreCache[url]);
+            if (moreLoading[url]) return;
 
-            showPopover(html);
-        }).always(function () {
-            moreLoading[url] = false;
-        });
-    }).mouseout(function () { $(this).popover('hide'); });
+            moreLoading[url] = true;
+            $.get(url).done(function (page) {
+                var html = $($.parseHTML(page)).find('.op .body').html();
+                moreCache[url] = html;
+
+                showPopover(html);
+            }).always(function () {
+                moreLoading[url] = false;
+            });
+        },
+        delay: false
+    });
 }
 
 function index() {

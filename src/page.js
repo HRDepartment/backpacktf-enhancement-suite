@@ -72,51 +72,58 @@ exports.addTooltips = function (elem, container) {
     elem.tooltip({container: container || 'body'});
 };
 
-// Copypastas for Firefox support
-exports.addItemPopovers = function (item, container) {
-    item.mouseenter(function() {
+// handlers{fn(id)|str content, fn(id)|str placement, fn(id) show, fn(id) hide}
+// fn is bound to this, remember to wrap strings in ""
+// if content/placement is str, variable elem refers to the element
+exports.addPopovers = function (item, container, handlers) {
+    item.each(function () {
         var $this = $(this),
-            id = (Math.random() + "") + (Date.now() + "");
+            self = this;
+        var id = (Math.random() + "").substr(2) + (Date.now() + "");
 
-        if ($this.parent().hasClass('item-list-links')) {
-            return;
-        }
-
-        // Firefox support
-        $this.attr('data-bes-id', id);
-        Script.exec('(function () {'+
-                    'var jq = $("[data-bes-id=\\"' + id + '\\"]");'+
-                    'jq.popover({animation: false, html: true, trigger: "manual", placement: window.get_popover_placement, content: window.createDetails(jq)});'+
-                    '}());');
-
-        setTimeout(function () {
-            if ($this.filter(':hover').length) {
-                // Firefox support
-                Script.exec('$(".popover").remove(); $("[data-bes-id=\\"' + id + '\\"]").popover("show"); $(".popover").css("padding", 0);');
-                $('#search-bazaar').click(function () {
-                    unsafeWindow.searchBazaar($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
-                });
-
-                $('#search-outpost').click(function () {
-                    unsafeWindow.searchOutpost($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
-                });
-
-                $('#search-lounge').click(function() {
-                    unsafeWindow.searchLounge($this.data('defindex'), $this.data('quality'));
-                });
+        $this.mouseenter(function() {
+            if ($this.parent().hasClass('item-list-links')) {
+                return;
             }
-        }, 300);
-    }).mouseleave(function () {
-        var $this = $(this);
 
-        setTimeout(function () {
-            if (!$this.filter(':hover').length && !$('.popover:hover').length) {
+            function next(h) {
+                var content, placement,
+                    handles = handlers;
+
+                if (h) handles = h;
+
+                content = typeof handles.content === "function" ? handles.content.call(this, id) : handles.content;
+                placement = typeof handles.placement === "function" ? handles.placement.call(this, id) : handles.placement;
+
                 // Firefox support
-                Script.exec('$("[data-bes-id=\\"' + $this.attr('data-bes-id') + '\\"]").popover("hide");');
+                $this.attr('data-bes-id', id);
+                Script.exec('(function () {'+
+                            'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
+                            'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
+                            '}());');
+
+                setTimeout(function () {
+                    if ($this.filter(':hover').length) {
+                        // Firefox support
+                        Script.exec('$(".popover").remove(); $("[data-bes-id=\\"' + id + '\\"]").popover("show"); $(".popover").css("padding", 0);');
+                        if (handles.show) handles.show.call(self, id);
+                    }
+                }, handles.delay ? 300 : 0);
             }
-        }, 100);
-    }).on('shown.bs.popover', function () {
-        Script.exec("$('.popover-timeago').timeago();");
+
+            if (handlers.next) handlers.next.call(this, next.bind(this));
+            else next.call(this);
+        }).mouseleave(function () {
+            setTimeout(function () {
+                if (!$this.filter(':hover').length && !$('.popover:hover').length) {
+                    // Firefox support
+                    Script.exec('$("[data-bes-id=\\"' + $this.attr('data-bes-id') + '\\"]").popover("hide");');
+                    if (handlers.hide) handlers.hide.call(self, id);
+                }
+            }, 100);
+        }).on('shown.bs.popover', function () {
+            Script.exec("$('.popover-timeago').timeago();");
+        });
     });
 
     if (container) {
@@ -130,6 +137,29 @@ exports.addItemPopovers = function (item, container) {
             }, 300);
         });
     }
+
+    return item;
+};
+
+exports.addItemPopovers = function (item, container) {
+    exports.addPopovers(item, container, {
+        content: 'window.createDetails(elem)',
+        placement: 'window.get_popover_placement',
+        show: function () {
+            var $this = $(this);
+            $('#search-bazaar').click(function () {
+                unsafeWindow.searchBazaar($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
+            });
+
+            $('#search-outpost').click(function () {
+                unsafeWindow.searchOutpost($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
+            });
+
+            $('#search-lounge').click(function() {
+                unsafeWindow.searchLounge($this.data('defindex'), $this.data('quality'));
+            });
+        }
+    });
 };
 
 exports.escapeHtml = function (message) {
@@ -138,4 +168,4 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.0.0';
+exports.SUITE_VERSION = '1.0.1';
