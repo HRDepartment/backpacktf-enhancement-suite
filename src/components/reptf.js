@@ -1,4 +1,3 @@
-/* global rep_gmp */
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -12,7 +11,7 @@ var bans = [],
 
 function addMiniProfileButton() {
     function generateMiniProfile(element) {
-        var profile = rep_gmp(element);
+        var profile = window.rep_gmp(element);
 
         profile.find('.stm-tf2outpost').parent().html('<i class=\"stm stm-tf2outpost\"></i> Outpost');
         profile.find('.stm-bazaar-tf').parent().html('<i class=\"stm stm-bazaar-tf\"></i> Bazaar');

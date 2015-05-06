@@ -110,6 +110,7 @@ function callInterface(meta, callback, args) {
             var success = json.response.success;
 
             if (!success) {
+                if (meta._fail) return;
                 console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
                 if (json.message === "API key does not exist.") {
                     removeKey();
@@ -126,6 +127,7 @@ function callInterface(meta, callback, args) {
                     }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
                 } else { // Unknown error, maybe network disconnected
                     setTimeout(function () {
+                        meta._fail = true;
                         callInterface(meta, callback, args);
                     }, 1000);
                 }

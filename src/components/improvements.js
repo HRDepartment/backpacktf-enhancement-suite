@@ -20,18 +20,9 @@ function addRemoveAllListings() {
     });
 }
 
-function global() {
-    var account = $('#profile-dropdown-container a[href="/my/account"]'),
-        help = $('.dropdown a[href="/help"]'),
-        more = $('.text-more'),
-        moreCache = {},
+function addMorePopovers(more) {
+    var moreCache = {},
         moreLoading = {};
-
-    if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
-    if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
-    if ($('.listing-remove').length) addRemoveAllListings();
-
-    if (!more.length) return;
 
     Page.addPopovers(more, $('.row:eq(4)'), {
         next: function (fn) {
@@ -61,6 +52,60 @@ function global() {
         },
         delay: false
     });
+}
+
+function addDupeCheck() {
+    function addDupeWarn(historybtn, dupe) {
+        historybtn.removeClass('btn-default').addClass(dupe ? 'btn-danger' : 'btn-success');
+    }
+
+    function checkDuped(oid) {
+        $.get("/item/" + oid, function (html) {
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            window.dupeCache[oid] = dupe;
+            // Use the newest history button in case user hovers away
+            window.addDupeWarn($('.popover .fa-calendar-o').parent(), dupe);
+        });
+    }
+
+    function createDetails(item) {
+        var details = window.dupe_createDetails(item),
+            oid = item.attr('data-original-id'),
+            historybtn = details.find('.fa-calendar-o').parent();
+
+        if (window.dupeCache[oid] != null) { // undefined/null (none/in progress)
+            window.addDupeWarn(historybtn, window.dupeCache[oid]);
+        } else {
+            historybtn.mouseover(function () {
+                if (window.dupeCache[oid] !== null) { // not in progress
+                    window.dupeCache[oid] = null;
+                    setTimeout(function () {
+                        window.checkDuped(oid);
+                    }, 80);
+                }
+            });
+        }
+
+        return details;
+    }
+
+    Script.exec('var dupe_createDetails = window.createDetails, dupeCache = {};'+
+                'window.checkDuped = ' + checkDuped + ';'+
+                'window.addDupeWarn = ' + addDupeWarn + ';'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
+function global() {
+    var account = $('#profile-dropdown-container a[href="/my/account"]'),
+        help = $('.dropdown a[href="/help"]'),
+        more = $('.text-more');
+
+    if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
+    if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
+    if ($('.listing-remove').length) addRemoveAllListings();
+    if (more.length) addMorePopovers(more);
+
+    addDupeCheck();
 }
 
 function index() {

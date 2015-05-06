@@ -307,8 +307,11 @@ function addSelectPageButtons() {
     $('.pagenum').each(function () {
         var $this = $(this),
             label = $this.find('.page-anchor'),
-            page = label[0].id.replace('page', ''),
-            sp = $this.find('.select-page');
+            page, sp;
+
+        if (!label[0]) return;
+        page = label[0].id.replace('page', '');
+        sp = $this.find('.select-page');
 
         if (sp.length) {
             $this.attr('data-page-num', page);

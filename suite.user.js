@@ -176,6 +176,7 @@ function callInterface(meta, callback, args) {
             var success = json.response.success;
 
             if (!success) {
+                if (meta._fail) return;
                 console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
                 if (json.message === "API key does not exist.") {
                     removeKey();
@@ -192,6 +193,7 @@ function callInterface(meta, callback, args) {
                     }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
                 } else { // Unknown error, maybe network disconnected
                     setTimeout(function () {
+                        meta._fail = true;
                         callInterface(meta, callback, args);
                     }, 1000);
                 }
@@ -478,7 +480,11 @@ module.exports = load;
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
+    API = require('../api'),
+    MenuActions = require('../menu-actions'),
     Pricetags = require('./pricetags');
+
+var classifiedsCache = {};
 
 function peek(e) {
     var item = $('.item'),
@@ -549,15 +555,101 @@ function checkAutoclose() {
     }
 }
 
+function findListing(obj, id) {
+    var listings = obj.listings,
+        listing, len, i;
+
+    for (i = 0, len = listings.length; i < len; i += 1) {
+        listing = listings[i];
+
+        if (listing.id == id) return {bump: listing.bump, created: listing.created};
+    }
+}
+
+function switchTimes($this, listing, obj) {
+    var lid = listing[0].id.substr(8),
+        mode = $this.attr('data-mode'),
+        handle = $this.find('.user-handle-container'),
+        list = findListing(obj, lid);
+
+    if (!list) {
+        listing.remove(); // No longer exists
+        return;
+    }
+
+    if (mode === '0') { // posted
+        $this.html('Created <span class="timeago listing-timeago" title="' + (new Date(list.created * 1000)).toISOString() + '">' + (moment.unix(list.created).fromNow()) + '</span> by ');
+    } else { // created
+        $this.html('Posted <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span> by ');
+    }
+
+    $this.append(handle).attr('data-mode', +!+mode);
+    if (mode === '0') { // add bumped
+        $this.append(' <small>Bumped <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span></small>');
+    }
+
+    Script.exec('$(".listing-timeago").timeago().tooltip({placement: "top", animation: false});');
+}
+
+function listingClick(next) {
+    var $this = $(this),
+        steamid = $this.find('.handle').attr('data-id'),
+        listing = $this.closest('.media.listing'),
+        cache = classifiedsCache[steamid];
+
+    if (!steamid) return;
+
+    if (cache) {
+        switchTimes($this, listing, cache);
+        if (typeof next === 'function') next();
+        return;
+    } else if (cache === false) {
+        return; // already loading
+    }
+
+    classifiedsCache[steamid] = false;
+    API.IGetUserListings(steamid, function (obj) {
+        classifiedsCache[steamid] = obj;
+        switchTimes($this, listing, obj);
+
+        if (typeof next === 'function') next();
+    });
+}
+
+function global() {
+    var media = $('.listing-buttons').parent(),
+        listingTimes = media.find('.text-muted:first');
+
+    if (!listingTimes.length) return;
+
+    listingTimes.click(listingClick).attr('data-mode', '0');
+    MenuActions.addAction({
+        name: 'Swap Listing Time',
+        icon: 'fa-exchange',
+        id: 'swap-listing-time',
+        click: function () {
+            var at = 0;
+
+            (function next() {
+                var elem = listingTimes[at];
+
+                if (!next) return;
+                at += 1;
+                listingClick.call(elem, next);
+            }());
+        }
+    });
+}
 
 function load() {
     page('/classifieds/add/:id', add);
     page('/classifieds/', checkAutoclose);
+    global();
 }
 
 module.exports = load;
 
-},{"../page":15,"../preferences":16,"../script":18,"./pricetags":8}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":14,"../page":15,"../preferences":16,"../script":18,"./pricetags":8}],6:[function(require,module,exports){
 var Prefs = require('../preferences'),
     MenuActions = require('../menu-actions'),
     Script = require('../script'),
@@ -580,18 +672,9 @@ function addRemoveAllListings() {
     });
 }
 
-function global() {
-    var account = $('#profile-dropdown-container a[href="/my/account"]'),
-        help = $('.dropdown a[href="/help"]'),
-        more = $('.text-more'),
-        moreCache = {},
+function addMorePopovers(more) {
+    var moreCache = {},
         moreLoading = {};
-
-    if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
-    if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
-    if ($('.listing-remove').length) addRemoveAllListings();
-
-    if (!more.length) return;
 
     Page.addPopovers(more, $('.row:eq(4)'), {
         next: function (fn) {
@@ -621,6 +704,60 @@ function global() {
         },
         delay: false
     });
+}
+
+function addDupeCheck() {
+    function addDupeWarn(historybtn, dupe) {
+        historybtn.removeClass('btn-default').addClass(dupe ? 'btn-danger' : 'btn-success');
+    }
+
+    function checkDuped(oid) {
+        $.get("/item/" + oid, function (html) {
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            window.dupeCache[oid] = dupe;
+            // Use the newest history button in case user hovers away
+            window.addDupeWarn($('.popover .fa-calendar-o').parent(), dupe);
+        });
+    }
+
+    function createDetails(item) {
+        var details = window.dupe_createDetails(item),
+            oid = item.attr('data-original-id'),
+            historybtn = details.find('.fa-calendar-o').parent();
+
+        if (window.dupeCache[oid] != null) { // undefined/null (none/in progress)
+            window.addDupeWarn(historybtn, window.dupeCache[oid]);
+        } else {
+            historybtn.mouseover(function () {
+                if (window.dupeCache[oid] !== null) { // not in progress
+                    window.dupeCache[oid] = null;
+                    setTimeout(function () {
+                        window.checkDuped(oid);
+                    }, 80);
+                }
+            });
+        }
+
+        return details;
+    }
+
+    Script.exec('var dupe_createDetails = window.createDetails, dupeCache = {};'+
+                'window.checkDuped = ' + checkDuped + ';'+
+                'window.addDupeWarn = ' + addDupeWarn + ';'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
+function global() {
+    var account = $('#profile-dropdown-container a[href="/my/account"]'),
+        help = $('.dropdown a[href="/help"]'),
+        more = $('.text-more');
+
+    if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
+    if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
+    if ($('.listing-remove').length) addRemoveAllListings();
+    if (more.length) addMorePopovers(more);
+
+    addDupeCheck();
 }
 
 function index() {
@@ -1392,8 +1529,11 @@ function addSelectPageButtons() {
     $('.pagenum').each(function () {
         var $this = $(this),
             label = $this.find('.page-anchor'),
-            page = label[0].id.replace('page', ''),
-            sp = $this.find('.select-page');
+            page, sp;
+
+        if (!label[0]) return;
+        page = label[0].id.replace('page', '');
+        sp = $this.find('.select-page');
 
         if (sp.length) {
             $this.attr('data-page-num', page);
@@ -1542,7 +1682,6 @@ function load() {
 module.exports = load;
 
 },{"../menu-actions":14,"../script":18}],11:[function(require,module,exports){
-/* global rep_gmp */
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -1556,7 +1695,7 @@ var bans = [],
 
 function addMiniProfileButton() {
     function generateMiniProfile(element) {
-        var profile = rep_gmp(element);
+        var profile = window.rep_gmp(element);
 
         profile.find('.stm-tf2outpost').parent().html('<i class=\"stm stm-tf2outpost\"></i> Outpost');
         profile.find('.stm-bazaar-tf').parent().html('<i class=\"stm stm-bazaar-tf\"></i> Bazaar');

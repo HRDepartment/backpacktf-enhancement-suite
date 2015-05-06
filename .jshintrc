@@ -4,6 +4,7 @@
     "unused": true,
     "undef": true,
     "-W018": true,
+    "eqnull": true,
     "globals": {
         "$": true,
         "unsafeWindow": true,
