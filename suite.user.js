@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.0.1
+// @version      1.1.0
 // @description  Enhances your backpack.tf experience.
 // @match        *://backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -2392,7 +2392,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.0.1';
+exports.SUITE_VERSION = '1.1.0';
 
 },{"./script":18}],16:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');
