@@ -61,6 +61,7 @@ exec(require('./components/users'));
 require('./menu-actions').applyActions();
 Page.addTooltips();
 
+$(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;
 
 },{"./api":2,"./components/changes":4,"./components/classifieds":5,"./components/improvements":6,"./components/prefs":7,"./components/pricetags":8,"./components/quicklist":9,"./components/refresh":10,"./components/reptf":11,"./components/search":12,"./components/users":13,"./menu-actions":14,"./page":15,"./preferences":16}],2:[function(require,module,exports){
@@ -540,12 +541,16 @@ function add() {
         '<div class="row"><div class="col-12 "><div class="panel" id="peak-panel">'+
         '<div class="panel-heading">Classifieds <span class="pull-right"><small><a href="#" id="classifieds-peek">Peek</a></small></span></div>'+
         '</div></div></div></div>';
-    var signature = Prefs.pref('classifieds', 'signature');
+    var signature = Prefs.pref('classifieds', 'signature'),
+        $details = $("#details");
 
     $('#page-content .row:eq(1)').before(htm);
     $("#classifieds-peek").one('click', peek);
-    $("#details").val(signature);
-    Script.exec('$("#details").trigger("blur");');
+
+    if (!$details.val().length) {
+        $details.val(signature);
+        Script.exec('$("#details").trigger("blur");');
+    }
 }
 
 function checkAutoclose() {
@@ -983,6 +988,19 @@ function addTabContent() {
     $('#modify-quicklists').click(Quicklist.modifyQuicklists);
     $('#clear-cache').click(clearCache);
     $('#reset-prefs').click(resetPrefs);
+
+    $('#bes').on('click.bs.button.data-api', '[data-toggle^="button"]', function (e) {
+        var $btn = $(e.target);
+        if (!$btn.hasClass('btn')) {
+            $btn = $btn.closest('.btn');
+        }
+
+        $.fn.button.call($btn, 'toggle');
+
+        if (!($(e.target).is('input[type="radio"]') || $(e.target).is('input[type="checkbox"]'))) {
+            e.preventDefault();
+        }
+    });
 }
 
 function clearCache() {

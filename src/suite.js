@@ -39,4 +39,5 @@ exec(require('./components/users'));
 require('./menu-actions').applyActions();
 Page.addTooltips();
 
+$(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;

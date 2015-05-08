@@ -61,12 +61,16 @@ function add() {
         '<div class="row"><div class="col-12 "><div class="panel" id="peak-panel">'+
         '<div class="panel-heading">Classifieds <span class="pull-right"><small><a href="#" id="classifieds-peek">Peek</a></small></span></div>'+
         '</div></div></div></div>';
-    var signature = Prefs.pref('classifieds', 'signature');
+    var signature = Prefs.pref('classifieds', 'signature'),
+        $details = $("#details");
 
     $('#page-content .row:eq(1)').before(htm);
     $("#classifieds-peek").one('click', peek);
-    $("#details").val(signature);
-    Script.exec('$("#details").trigger("blur");');
+
+    if (!$details.val().length) {
+        $details.val(signature);
+        Script.exec('$("#details").trigger("blur");');
+    }
 }
 
 function checkAutoclose() {

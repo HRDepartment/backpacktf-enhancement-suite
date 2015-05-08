@@ -178,6 +178,19 @@ function addTabContent() {
     $('#modify-quicklists').click(Quicklist.modifyQuicklists);
     $('#clear-cache').click(clearCache);
     $('#reset-prefs').click(resetPrefs);
+
+    $('#bes').on('click.bs.button.data-api', '[data-toggle^="button"]', function (e) {
+        var $btn = $(e.target);
+        if (!$btn.hasClass('btn')) {
+            $btn = $btn.closest('.btn');
+        }
+
+        $.fn.button.call($btn, 'toggle');
+
+        if (!($(e.target).is('input[type="radio"]') || $(e.target).is('input[type="checkbox"]'))) {
+            e.preventDefault();
+        }
+    });
 }
 
 function clearCache() {
