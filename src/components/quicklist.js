@@ -2,11 +2,11 @@ var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences');
 
-var currencyNames = {"long":{"earbuds":["bud","buds"],"keys":["key","keys"],"metal":["ref","ref"]},"short":{"earbuds":["b","b"],"keys":["k","k"],"metal":["r","r"]}},
+var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short":{"keys":["k","k"],"metal":["r","r"]}},
     defaults = [
-        {metal: 0.05, keys: 0, earbuds: 0, message: ""},
-        {metal: 0.11, keys: 0, earbuds: 0, message: ""},
-        {metal: 0, keys: 1, earbuds: 0, message: ""}
+        {metal: 0.05, keys: 0,  message: ""},
+        {metal: 0.11, keys: 0, message: ""},
+        {metal: 0, keys: 1, message: ""}
     ],
     values;
 
@@ -22,10 +22,7 @@ function loadQuicklists() {
 }
 
 function addQuicklistPanelButtons() {
-    $('#backpack').closest('.panel').find('.panel-heading .pull-right').html(
-        '<a id="bp-custom-select-ql" class="btn btn-default btn-primary btn-xs disabled" href="##" style="margin-top: -2px;">Quicklist selection</a>'+
-        ' <a id="show-markdown-modal" class="btn btn-default btn-primary btn-xs" href="##" style="margin-top: -2px;">Convert to text</a>'
-    );
+    $('#show-markdown-modal').before(' <a id="bp-custom-select-ql" class="btn btn-default btn-primary btn-xs disabled" href="##">Quicklist selection</a>');
 }
 
 function updateSelectQuicklist() {
@@ -60,7 +57,6 @@ function qlFormatValue(value, short) {
         cnames = currencyNames[short ? "short" : "long"],
         space = short ? "" : " ";
 
-    if (value.earbuds) str.push(value.earbuds + space + cnames.earbuds[+(value.earbuds !== 1)]);
     if (value.keys) str.push(value.keys + space + cnames.keys[+(value.keys !== 1)]);
     if (value.metal) str.push(value.metal + space + cnames.metal[+(value.metal !== 1)]);
     return str.join(', ');
@@ -72,9 +68,9 @@ function addStyles() {
         ".ql-button-value { width: 70px; height: 32px; margin-bottom: 3px; margin-top: -2px; }"+
         ".ql-message { height: 32px; margin-bottom: 15px; }"+
         ".ql-button-message-label { margin-top: 4px; margin-left: 1px; }"+
-        ".ql-remove-button { margin-left: 15px; }"+
+        ".ql-remove-button { margin-left: 45px; }"+
         ".ql-label { display: inline-block; }"+
-        ".ql-label-metal { padding-left: 1px; } .ql-label-keys { padding-left: 39px; } .ql-label-earbuds { padding-left: 40px; }"
+        ".ql-label-metal { padding-left: 1px; } .ql-label-keys { padding-left: 39px; }"
     );
 }
 
@@ -82,15 +78,13 @@ function quicklistSelectHtml(value, idx) {
     return '<a class="btn btn-primary ql-button-value-idx ql-action-button" data-action="select" data-idx="' + idx + '" style="margin-right: 3px;">' + qlFormatValue(value, true) + '</a>';
 }
 
-function quicklistBtnHtml(metal, keys, earbuds, message, remove) {
+function quicklistBtnHtml(metal, keys, message, remove) {
     return '<div class="ql-button-values form-inline">'+
         '<div class="ql-label ql-label-metal"><label>Metal</label></div>'+
         ' <div class="ql-label ql-label-keys"><label>Keys</label></div>'+
-        ' <div class="ql-label ql-label-earbuds"><label>Earbuds</label></div> '+
         (remove !== false ? '<a class="btn btn-primary btn-xs ql-remove-button">Remove</a>' : '') + '<br>'+
         '<input type="number" class="ql-button-value ql-metal form-control" value="' + metal + '"> '+
         '<input type="number" class="ql-button-value ql-keys form-control" value="' + keys + '"> '+
-        '<input type="number" class="ql-button-value ql-earbuds form-control" value="' + earbuds + '"> '+
         '<br><label class="ql-button-message-label">Message </label> '+
         '<input type="text" class="ql-message form-control" value="' + Page.escapeHtml(message) + '">'+
         '</div>';
@@ -150,7 +144,6 @@ function listSelection(value) {
 
     _clearSelection();
     unsafeWindow.updateClearSelectionState();
-    addQuicklistPanelButtons();
 
     selection.each(function () {
         var $this = $(this);
@@ -177,13 +170,14 @@ function listItem(id, value, sample, then) {
         buyout: sample.data('listing-buyout'),
         tradeoffer_url: sample.data('listing-offers-url'),
         'user-id': Page.csrfToken(),
-        metal: value.metal,
-        keys: value.keys,
-        earbuds: value.earbuds
+        currencies: {
+            metal: value.metal,
+            keys: value.keys
+        }
     };
 
     // id: current item id
-    $.post("http://backpack.tf/classifieds/add/" + id, payload, function (page) {
+    $.post("http://backpack.tf/classifieds/sell/" + id, payload, function (page) {
         var ok = /<i class="fa fa-check-circle"><\/i> Your listing was posted successfully. <\/div>/.test(page),
             item = $('[data-id="' + id + '"]');
 
@@ -210,7 +204,6 @@ function buttonValue(elem) {
     return {
         metal: +(Math.abs(parseFloat(elem.find('.ql-metal').val())).toFixed(2)) || 0,
         keys: Math.abs(parseInt(elem.find('.ql-keys').val(), 10)) || 0,
-        earbuds: Math.abs(parseInt(elem.find('.ql-earbuds').val(), 10)) || 0,
         message: elem.find('.ql-message').val() || ""
     };
 }
@@ -226,11 +219,11 @@ function copyButtonValues(value, elem) {
 
 function modifyQuicklists() {
     var html =
-        "<p>Add, edit, and remove quicklist presets here. Metal can have two decimals, keys and earbuds must be integers (no decimals). If any value is missing, it is defaulted to 0, with the exception of the message, which then is empty.</p>"+
+        "<p>Add, edit, and remove quicklist presets here. Metal can have two decimals, keys must be integers (no decimals). If any value is missing, it is defaulted to 0, with the exception of the message, which then is empty.</p>"+
         "<div id='ql-button-listing'>";
 
     values.forEach(function (vals) {
-        html += quicklistBtnHtml(vals.metal, vals.keys, vals.earbuds, vals.message);
+        html += quicklistBtnHtml(vals.metal, vals.keys, vals.message);
     });
     html += "</div>"+
         '<a class="btn btn-default ql-add-button">Add</a>';
@@ -239,7 +232,7 @@ function modifyQuicklists() {
 
     $('.ql-save-button').click(function () {
         values = collectButtonValues().filter(function (v) {
-            return (v.metal || v.keys || v.earbuds) && isFinite(v.metal) && isFinite(v.keys) && isFinite(v.earbuds);
+            return (v.metal || v.keys) && isFinite(v.metal) && isFinite(v.keys);
         });
 
         localStorage.setItem("bes-quicklists", JSON.stringify(values));

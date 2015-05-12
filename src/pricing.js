@@ -7,6 +7,7 @@ exports.ec = function (cb) {
             var ec = new EconCC(currencies, pricelist);
             ec.step = Prefs.pref('pricing', 'step');
             ec.range = Prefs.pref('pricing', 'range');
+            delete ec.currencies.earbuds;
 
             cb(ec, pricelist, currencies);
         });

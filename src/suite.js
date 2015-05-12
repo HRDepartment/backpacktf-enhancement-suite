@@ -7,7 +7,6 @@ require('./api').init();
 Prefs
     .default('reptf', 'enabled', true)
     .default('quicklist', 'enabled', false)
-    .default('pricetags', 'earbuds', true)
     .default('pricetags', 'modmult', 0.5)
     .default('pricetags', 'tooltips', true)
     .default('changes', 'enabled', true)

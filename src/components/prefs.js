@@ -122,14 +122,11 @@ function addTabContent() {
                 {value: EconCC.Enabled, label: 'Enabled'},
                 {value: EconCC.Disabled, label: 'Disabled'}
             ], Prefs.pref('pricing', 'step'))),
-            help("Whether currency values should be 'prettified'. Metal is rounded to the nearest weapon (except when the value is less than one), and keys and earbuds are rounded to the nearest 20th. (1.40 ref -> 1.38, 2.27 keys -> 2.25 keys)"),
+            help("Whether currency values should be 'prettified'. Metal is rounded to the nearest weapon (except when the value is less than one), and keys are rounded to the nearest 20th. (1.40 ref -> 1.38, 2.27 keys -> 2.25 keys)"),
         ]),
 
         section('Pricetags', [
             help("This section requires your 'Item pricetags' (Team Fortress 2 tab) to be 'Game currency'. Only Team Fortress 2 is supported obviously."),
-
-            buttons('Earbuds', 'pricetags', 'earbuds', yesno(Prefs.pref('pricetags', 'earbuds'))),
-            help("Replaces earbud pricetags on the Unusual/Effect Prices pages, Classifieds, and elsewhere items have a buds pricetag with keys when turned off."),
 
             buttons('Value item modifications at', 'pricetags', 'modmult', choice([
                 {value: 0, label: '0%'},
@@ -144,7 +141,7 @@ function addTabContent() {
             help("Strange Parts, Paint."),
 
             buttons('Tooltips', 'pricetags', 'tooltips', yesno(Prefs.pref('pricetags', 'tooltips'))),
-            help("Adds tooltips to items that are priced in keys or earbuds."),
+            help("Adds tooltips to items that are priced in keys."),
         ]),
 
         section('Recent price changes in backpacks', [

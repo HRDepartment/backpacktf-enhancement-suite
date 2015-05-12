@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.1.1
+// @version      1.1.2
 // @description  Enhances your backpack.tf experience.
 // @match        *://backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -29,7 +29,6 @@ require('./api').init();
 Prefs
     .default('reptf', 'enabled', true)
     .default('quicklist', 'enabled', false)
-    .default('pricetags', 'earbuds', true)
     .default('pricetags', 'modmult', 0.5)
     .default('pricetags', 'tooltips', true)
     .default('changes', 'enabled', true)
@@ -622,7 +621,7 @@ function listingClick(next) {
 }
 
 function global() {
-    var media = $('.listing-buttons').parent(),
+    var media = $('.listing-buttons').parent().filter('.listing-intent-sell'),
         listingTimes = media.find('.text-muted:first');
 
     if (!listingTimes.length) return;
@@ -647,7 +646,7 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/add/:id', add);
+    page('/classifieds/:type/:id', add);
     page('/classifieds/', checkAutoclose);
     global();
 }
@@ -932,14 +931,11 @@ function addTabContent() {
                 {value: EconCC.Enabled, label: 'Enabled'},
                 {value: EconCC.Disabled, label: 'Disabled'}
             ], Prefs.pref('pricing', 'step'))),
-            help("Whether currency values should be 'prettified'. Metal is rounded to the nearest weapon (except when the value is less than one), and keys and earbuds are rounded to the nearest 20th. (1.40 ref -> 1.38, 2.27 keys -> 2.25 keys)"),
+            help("Whether currency values should be 'prettified'. Metal is rounded to the nearest weapon (except when the value is less than one), and keys are rounded to the nearest 20th. (1.40 ref -> 1.38, 2.27 keys -> 2.25 keys)"),
         ]),
 
         section('Pricetags', [
             help("This section requires your 'Item pricetags' (Team Fortress 2 tab) to be 'Game currency'. Only Team Fortress 2 is supported obviously."),
-
-            buttons('Earbuds', 'pricetags', 'earbuds', yesno(Prefs.pref('pricetags', 'earbuds'))),
-            help("Replaces earbud pricetags on the Unusual/Effect Prices pages, Classifieds, and elsewhere items have a buds pricetag with keys when turned off."),
 
             buttons('Value item modifications at', 'pricetags', 'modmult', choice([
                 {value: 0, label: '0%'},
@@ -954,7 +950,7 @@ function addTabContent() {
             help("Strange Parts, Paint."),
 
             buttons('Tooltips', 'pricetags', 'tooltips', yesno(Prefs.pref('pricetags', 'tooltips'))),
-            help("Adds tooltips to items that are priced in keys or earbuds."),
+            help("Adds tooltips to items that are priced in keys."),
         ]),
 
         section('Recent price changes in backpacks', [
@@ -1110,15 +1106,12 @@ function setupInst(next) {
     Pricing.ec(function (inst) {
         ec = inst;
         ec.currencies.metal.trailing = false;
-        ec.currencies.earbuds.label = Prefs.pref('pricetags', 'earbuds');
-
         next();
     });
 }
 
 function applyTagsToItems(items) {
-    var buds = Prefs.pref('pricetags', 'earbuds'),
-        modmult = Prefs.pref('pricetags', 'modmult'),
+    var modmult = Prefs.pref('pricetags', 'modmult'),
         tooltips = Prefs.pref('pricetags', 'tooltips'),
         pricedef = Pricing.default(),
         clear = false;
@@ -1130,8 +1123,6 @@ function applyTagsToItems(items) {
             value = price.value,
             currency = price.currency,
             eq = $this.find('.equipped'),
-            et = eq.text(),
-            bud = !buds && /bud/.test(et),
             mults = 0,
             f, o, s;
 
@@ -1153,29 +1144,26 @@ function applyTagsToItems(items) {
         value = ec.convertFromBC(value, currency);
 
         o = {value: value || 0.001, currency: currency};
-        if (/bud/.test(currency)) {
-            o = ec.convertToCurrency(value, currency, 'keys');
-        }
 
         if (listing) s = {step: EconCC.Disabled};
         else s = {};
 
-        if (bud || mults || !pricedef) {
+        if (mults || !pricedef) {
             // Disable step for listings
             ec.scope(s, function () {
                 var di = $this.attr('data-defindex');
 
                 ec.currencies.keys.round = listing ? 2 : 1;
 
-                // Exception for keys and earbuds
-                if (di === '5021' || di === '143') f = ec.formatCurrency(o);
+                // Exception for keys
+                if (di === '5021') f = ec.formatCurrency(o);
                 else f = ec.format(o, EconCC.Mode.Label);
             });
 
             eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
         }
 
-        if (tooltips && /key|bud/.test(currency)) {
+        if (tooltips && /key/.test(currency)) {
             ec.scope(s, function () {
                 eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
             });
@@ -1193,22 +1181,8 @@ function applyTagsToItems(items) {
     }
 }
 
-function applyTagsToAvg(avg) {
-    if (!Prefs.pref('pricetags', 'earbuds')) {
-        ec.currencies.keys.round = 1;
-        // /unusuals, /effects
-        avg.each(function () {
-            var $this = $(this),
-                value = ec.convertToCurrency($this.attr('data-price'), 'metal', 'keys');
-
-            $this.find('.equipped').text('avg ' + ec.formatCurrency(value));
-        });
-    }
-}
-
 function enabled() {
     return Page.appid() === 440 && (
-        Prefs.pref('pricetags', 'earbuds') !== true ||
         Prefs.pref('pricetags', 'modmult') !== 0.5 ||
         Prefs.pref('pricetags', 'tooltips') !== false ||
         !Pricing.default()
@@ -1216,18 +1190,15 @@ function enabled() {
 }
 
 function load() {
-    var items, avg;
+    var items;
 
     if (!enabled()) return;
 
     items = $('.item[data-p-bptf-all]:not([data-vote])');
-    avg = $('[data-classes]');
-
-    if (!items.length && !avg.length) return;
+    if (!items.length) return;
 
     setupInst(function () {
         applyTagsToItems(items);
-        applyTagsToAvg(avg);
     });
 }
 
@@ -1242,11 +1213,11 @@ var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences');
 
-var currencyNames = {"long":{"earbuds":["bud","buds"],"keys":["key","keys"],"metal":["ref","ref"]},"short":{"earbuds":["b","b"],"keys":["k","k"],"metal":["r","r"]}},
+var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short":{"keys":["k","k"],"metal":["r","r"]}},
     defaults = [
-        {metal: 0.05, keys: 0, earbuds: 0, message: ""},
-        {metal: 0.11, keys: 0, earbuds: 0, message: ""},
-        {metal: 0, keys: 1, earbuds: 0, message: ""}
+        {metal: 0.05, keys: 0,  message: ""},
+        {metal: 0.11, keys: 0, message: ""},
+        {metal: 0, keys: 1, message: ""}
     ],
     values;
 
@@ -1262,10 +1233,7 @@ function loadQuicklists() {
 }
 
 function addQuicklistPanelButtons() {
-    $('#backpack').closest('.panel').find('.panel-heading .pull-right').html(
-        '<a id="bp-custom-select-ql" class="btn btn-default btn-primary btn-xs disabled" href="##" style="margin-top: -2px;">Quicklist selection</a>'+
-        ' <a id="show-markdown-modal" class="btn btn-default btn-primary btn-xs" href="##" style="margin-top: -2px;">Convert to text</a>'
-    );
+    $('#show-markdown-modal').before(' <a id="bp-custom-select-ql" class="btn btn-default btn-primary btn-xs disabled" href="##">Quicklist selection</a>');
 }
 
 function updateSelectQuicklist() {
@@ -1300,7 +1268,6 @@ function qlFormatValue(value, short) {
         cnames = currencyNames[short ? "short" : "long"],
         space = short ? "" : " ";
 
-    if (value.earbuds) str.push(value.earbuds + space + cnames.earbuds[+(value.earbuds !== 1)]);
     if (value.keys) str.push(value.keys + space + cnames.keys[+(value.keys !== 1)]);
     if (value.metal) str.push(value.metal + space + cnames.metal[+(value.metal !== 1)]);
     return str.join(', ');
@@ -1312,9 +1279,9 @@ function addStyles() {
         ".ql-button-value { width: 70px; height: 32px; margin-bottom: 3px; margin-top: -2px; }"+
         ".ql-message { height: 32px; margin-bottom: 15px; }"+
         ".ql-button-message-label { margin-top: 4px; margin-left: 1px; }"+
-        ".ql-remove-button { margin-left: 15px; }"+
+        ".ql-remove-button { margin-left: 45px; }"+
         ".ql-label { display: inline-block; }"+
-        ".ql-label-metal { padding-left: 1px; } .ql-label-keys { padding-left: 39px; } .ql-label-earbuds { padding-left: 40px; }"
+        ".ql-label-metal { padding-left: 1px; } .ql-label-keys { padding-left: 39px; }"
     );
 }
 
@@ -1322,15 +1289,13 @@ function quicklistSelectHtml(value, idx) {
     return '<a class="btn btn-primary ql-button-value-idx ql-action-button" data-action="select" data-idx="' + idx + '" style="margin-right: 3px;">' + qlFormatValue(value, true) + '</a>';
 }
 
-function quicklistBtnHtml(metal, keys, earbuds, message, remove) {
+function quicklistBtnHtml(metal, keys, message, remove) {
     return '<div class="ql-button-values form-inline">'+
         '<div class="ql-label ql-label-metal"><label>Metal</label></div>'+
         ' <div class="ql-label ql-label-keys"><label>Keys</label></div>'+
-        ' <div class="ql-label ql-label-earbuds"><label>Earbuds</label></div> '+
         (remove !== false ? '<a class="btn btn-primary btn-xs ql-remove-button">Remove</a>' : '') + '<br>'+
         '<input type="number" class="ql-button-value ql-metal form-control" value="' + metal + '"> '+
         '<input type="number" class="ql-button-value ql-keys form-control" value="' + keys + '"> '+
-        '<input type="number" class="ql-button-value ql-earbuds form-control" value="' + earbuds + '"> '+
         '<br><label class="ql-button-message-label">Message </label> '+
         '<input type="text" class="ql-message form-control" value="' + Page.escapeHtml(message) + '">'+
         '</div>';
@@ -1390,7 +1355,6 @@ function listSelection(value) {
 
     _clearSelection();
     unsafeWindow.updateClearSelectionState();
-    addQuicklistPanelButtons();
 
     selection.each(function () {
         var $this = $(this);
@@ -1417,13 +1381,14 @@ function listItem(id, value, sample, then) {
         buyout: sample.data('listing-buyout'),
         tradeoffer_url: sample.data('listing-offers-url'),
         'user-id': Page.csrfToken(),
-        metal: value.metal,
-        keys: value.keys,
-        earbuds: value.earbuds
+        currencies: {
+            metal: value.metal,
+            keys: value.keys
+        }
     };
 
     // id: current item id
-    $.post("http://backpack.tf/classifieds/add/" + id, payload, function (page) {
+    $.post("http://backpack.tf/classifieds/sell/" + id, payload, function (page) {
         var ok = /<i class="fa fa-check-circle"><\/i> Your listing was posted successfully. <\/div>/.test(page),
             item = $('[data-id="' + id + '"]');
 
@@ -1450,7 +1415,6 @@ function buttonValue(elem) {
     return {
         metal: +(Math.abs(parseFloat(elem.find('.ql-metal').val())).toFixed(2)) || 0,
         keys: Math.abs(parseInt(elem.find('.ql-keys').val(), 10)) || 0,
-        earbuds: Math.abs(parseInt(elem.find('.ql-earbuds').val(), 10)) || 0,
         message: elem.find('.ql-message').val() || ""
     };
 }
@@ -1466,11 +1430,11 @@ function copyButtonValues(value, elem) {
 
 function modifyQuicklists() {
     var html =
-        "<p>Add, edit, and remove quicklist presets here. Metal can have two decimals, keys and earbuds must be integers (no decimals). If any value is missing, it is defaulted to 0, with the exception of the message, which then is empty.</p>"+
+        "<p>Add, edit, and remove quicklist presets here. Metal can have two decimals, keys must be integers (no decimals). If any value is missing, it is defaulted to 0, with the exception of the message, which then is empty.</p>"+
         "<div id='ql-button-listing'>";
 
     values.forEach(function (vals) {
-        html += quicklistBtnHtml(vals.metal, vals.keys, vals.earbuds, vals.message);
+        html += quicklistBtnHtml(vals.metal, vals.keys, vals.message);
     });
     html += "</div>"+
         '<a class="btn btn-default ql-add-button">Add</a>';
@@ -1479,7 +1443,7 @@ function modifyQuicklists() {
 
     $('.ql-save-button').click(function () {
         values = collectButtonValues().filter(function (v) {
-            return (v.metal || v.keys || v.earbuds) && isFinite(v.metal) && isFinite(v.keys) && isFinite(v.earbuds);
+            return (v.metal || v.keys) && isFinite(v.metal) && isFinite(v.keys);
         });
 
         localStorage.setItem("bes-quicklists", JSON.stringify(values));
@@ -1604,9 +1568,9 @@ var refreshed = [],
     listings;
 
 function addRefreshButtons() {
-    $('a.listing-report').each(function () {
+    $('.media.listing').filter(':has(.listing-intent-sell)').find('.listing-report').each(function () {
         $(this).parent().prepend(
-            '<a class="btn btn-xs btn-bottom btn-primary listing-refreshbp" data-tip="top" title="" data-original-title="Update this user\'s backpack.">'+
+            '<a class="btn btn-xs btn-bottom btn-primary listing-refreshbp" data-tip="top" title="" data-original-title="Refresh this user\'s backpack.">'+
             '<i class="fa fa-sw fa-refresh"></i>'+
             '</a>'
         );
@@ -1675,11 +1639,11 @@ function addMenuAction() {
     });
 }
 
-function addRallHeader(elem) {
+function addRallHeader(elem, sep) {
     return function () {
-        var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>');
+        var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>' + (sep ? " | " : ""));
         header.find('#header-refresh-all').click(refreshAll);
-    
+
         elem.append(header);
     };
 }
@@ -1689,11 +1653,11 @@ function load() {
     addRefreshButtons();
 
     if (!listings) return;
-    
+
     addButtonTooltips();
     addButtonListeners();
     page('/classifieds/', addRallHeader($('#media-container-row-alt .panel-heading:first')));
-    page('/stats/:quality/:name/:tradable/:craftable', addRallHeader($('#page-content .panel-heading:contains(Classified)')));
+    page('/stats/:quality/:name/:tradable/:craftable', addRallHeader($('#page-content .panel-heading:contains(Classified)', true)));
     addMenuAction();
 }
 
@@ -2410,7 +2374,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.1.1';
+exports.SUITE_VERSION = '1.1.2';
 
 },{"./script":18}],16:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');
@@ -2477,6 +2441,7 @@ exports.ec = function (cb) {
             var ec = new EconCC(currencies, pricelist);
             ec.step = Prefs.pref('pricing', 'step');
             ec.range = Prefs.pref('pricing', 'range');
+            delete ec.currencies.earbuds;
 
             cb(ec, pricelist, currencies);
         });

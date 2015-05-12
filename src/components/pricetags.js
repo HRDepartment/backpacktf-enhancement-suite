@@ -28,15 +28,12 @@ function setupInst(next) {
     Pricing.ec(function (inst) {
         ec = inst;
         ec.currencies.metal.trailing = false;
-        ec.currencies.earbuds.label = Prefs.pref('pricetags', 'earbuds');
-
         next();
     });
 }
 
 function applyTagsToItems(items) {
-    var buds = Prefs.pref('pricetags', 'earbuds'),
-        modmult = Prefs.pref('pricetags', 'modmult'),
+    var modmult = Prefs.pref('pricetags', 'modmult'),
         tooltips = Prefs.pref('pricetags', 'tooltips'),
         pricedef = Pricing.default(),
         clear = false;
@@ -48,8 +45,6 @@ function applyTagsToItems(items) {
             value = price.value,
             currency = price.currency,
             eq = $this.find('.equipped'),
-            et = eq.text(),
-            bud = !buds && /bud/.test(et),
             mults = 0,
             f, o, s;
 
@@ -71,29 +66,26 @@ function applyTagsToItems(items) {
         value = ec.convertFromBC(value, currency);
 
         o = {value: value || 0.001, currency: currency};
-        if (/bud/.test(currency)) {
-            o = ec.convertToCurrency(value, currency, 'keys');
-        }
 
         if (listing) s = {step: EconCC.Disabled};
         else s = {};
 
-        if (bud || mults || !pricedef) {
+        if (mults || !pricedef) {
             // Disable step for listings
             ec.scope(s, function () {
                 var di = $this.attr('data-defindex');
 
                 ec.currencies.keys.round = listing ? 2 : 1;
 
-                // Exception for keys and earbuds
-                if (di === '5021' || di === '143') f = ec.formatCurrency(o);
+                // Exception for keys
+                if (di === '5021') f = ec.formatCurrency(o);
                 else f = ec.format(o, EconCC.Mode.Label);
             });
 
             eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
         }
 
-        if (tooltips && /key|bud/.test(currency)) {
+        if (tooltips && /key/.test(currency)) {
             ec.scope(s, function () {
                 eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
             });
@@ -111,22 +103,8 @@ function applyTagsToItems(items) {
     }
 }
 
-function applyTagsToAvg(avg) {
-    if (!Prefs.pref('pricetags', 'earbuds')) {
-        ec.currencies.keys.round = 1;
-        // /unusuals, /effects
-        avg.each(function () {
-            var $this = $(this),
-                value = ec.convertToCurrency($this.attr('data-price'), 'metal', 'keys');
-
-            $this.find('.equipped').text('avg ' + ec.formatCurrency(value));
-        });
-    }
-}
-
 function enabled() {
     return Page.appid() === 440 && (
-        Prefs.pref('pricetags', 'earbuds') !== true ||
         Prefs.pref('pricetags', 'modmult') !== 0.5 ||
         Prefs.pref('pricetags', 'tooltips') !== false ||
         !Pricing.default()
@@ -134,18 +112,15 @@ function enabled() {
 }
 
 function load() {
-    var items, avg;
+    var items;
 
     if (!enabled()) return;
 
     items = $('.item[data-p-bptf-all]:not([data-vote])');
-    avg = $('[data-classes]');
-
-    if (!items.length && !avg.length) return;
+    if (!items.length) return;
 
     setupInst(function () {
         applyTagsToItems(items);
-        applyTagsToAvg(avg);
     });
 }
 

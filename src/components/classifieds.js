@@ -142,7 +142,7 @@ function listingClick(next) {
 }
 
 function global() {
-    var media = $('.listing-buttons').parent(),
+    var media = $('.listing-buttons').parent().filter('.listing-intent-sell'),
         listingTimes = media.find('.text-muted:first');
 
     if (!listingTimes.length) return;
@@ -167,7 +167,7 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/add/:id', add);
+    page('/classifieds/:type/:id', add);
     page('/classifieds/', checkAutoclose);
     global();
 }

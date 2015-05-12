@@ -5,9 +5,9 @@ var refreshed = [],
     listings;
 
 function addRefreshButtons() {
-    $('a.listing-report').each(function () {
+    $('.media.listing').filter(':has(.listing-intent-sell)').find('.listing-report').each(function () {
         $(this).parent().prepend(
-            '<a class="btn btn-xs btn-bottom btn-primary listing-refreshbp" data-tip="top" title="" data-original-title="Update this user\'s backpack.">'+
+            '<a class="btn btn-xs btn-bottom btn-primary listing-refreshbp" data-tip="top" title="" data-original-title="Refresh this user\'s backpack.">'+
             '<i class="fa fa-sw fa-refresh"></i>'+
             '</a>'
         );
@@ -76,11 +76,11 @@ function addMenuAction() {
     });
 }
 
-function addRallHeader(elem) {
+function addRallHeader(elem, sep) {
     return function () {
-        var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>');
+        var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>' + (sep ? " | " : ""));
         header.find('#header-refresh-all').click(refreshAll);
-    
+
         elem.append(header);
     };
 }
@@ -90,11 +90,11 @@ function load() {
     addRefreshButtons();
 
     if (!listings) return;
-    
+
     addButtonTooltips();
     addButtonListeners();
     page('/classifieds/', addRallHeader($('#media-container-row-alt .panel-heading:first')));
-    page('/stats/:quality/:name/:tradable/:craftable', addRallHeader($('#page-content .panel-heading:contains(Classified)')));
+    page('/stats/:quality/:name/:tradable/:craftable', addRallHeader($('#page-content .panel-heading:contains(Classified)', true)));
     addMenuAction();
 }
 

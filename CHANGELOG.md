@@ -1,6 +1,10 @@
+### v1.1.2
+Fixes for the May 12th, 2015 backpack.tf update.
+Removed pricetags.earbuds option.
+
 ### v1.1.1
-Classifieds signature no longer overrides a listing's message when relisting
-Item filter modal fixed
+Classifieds signature no longer overrides a listing's message when relisting.
+Item filter modal fixed.
 
 ### v1.1.0
 Classifieds listing creation date (click on Posted or use the menu action to toggle)
