@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.1.2
+// @version      1.1.2.1
 // @description  Enhances your backpack.tf experience.
 // @match        *://backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -2118,7 +2118,8 @@ var BadgeSupporter = {
 
 var users = {
     "76561198070299574": {badges: [BadgeSelfMade], color: '#028482'},
-    "76561198039453751": {badges: [BadgeSupporter]}
+    "76561198039453751": {badges: [BadgeSupporter]},
+    "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'}
 };
 
 function renderUserBadges(badges) {
