@@ -1,3 +1,6 @@
+### v1.1.4
+Added experimental support for csgo and dota2.
+
 ### v1.1.3
 Separated signature into sell order signature and buy order signature.
 Fixed Classifieds peek.

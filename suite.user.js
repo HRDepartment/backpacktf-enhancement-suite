@@ -5,7 +5,7 @@
 // @author       cares
 // @version      1.1.3
 // @description  Enhances your backpack.tf experience.
-// @match        *://backpack.tf/*
+// @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
 // @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
 // @require      https://cdn.rawgit.com/caresx/steam-econcc/2551ce827114e8fd11e94feaa9681bf4aa302379/econcc.js
@@ -2051,11 +2051,12 @@ function processCustomResults(items) {
                 desc = i.description,
                 descid = descids[desc],
                 styl = styleGame(i.name, descid),
-                name = styl.name;
+                name = styl.name,
+                price = Math.min(0.01, +(i.price.split(' ')[0].substr(1)) * 0.85);
 
             links
                 .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
-                        ' title="' + ec.f((+(i.price.split(' ')[0].substr(1)) / 1.1472) + ' usd:Long') + '">' + i.price + '</a>')
+                        ' title="' + ec.f(price + ' usd:Long') + '">' + i.price + '</a>')
                 .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
             ;
 
@@ -2279,6 +2280,7 @@ exports.init = function () {
 
     state.appid = 440;
     if (location.hostname.indexOf("dota2") !== -1) state.appid = 570;
+    if (location.hostname.indexOf("csgo") !== -1) state.appid = 730;
     state.handles = $('.handle');
 };
 

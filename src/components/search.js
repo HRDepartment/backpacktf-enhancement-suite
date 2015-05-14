@@ -171,11 +171,12 @@ function processCustomResults(items) {
                 desc = i.description,
                 descid = descids[desc],
                 styl = styleGame(i.name, descid),
-                name = styl.name;
+                name = styl.name,
+                price = Math.min(0.01, +(i.price.split(' ')[0].substr(1)) * 0.85);
 
             links
                 .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
-                        ' title="' + ec.f((+(i.price.split(' ')[0].substr(1)) / 1.1472) + ' usd:Long') + '">' + i.price + '</a>')
+                        ' title="' + ec.f(price + ' usd:Long') + '">' + i.price + '</a>')
                 .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
             ;
 

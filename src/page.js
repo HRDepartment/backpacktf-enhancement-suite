@@ -45,6 +45,7 @@ exports.init = function () {
 
     state.appid = 440;
     if (location.hostname.indexOf("dota2") !== -1) state.appid = 570;
+    if (location.hostname.indexOf("csgo") !== -1) state.appid = 730;
     state.handles = $('.handle');
 };
 
@@ -168,4 +169,4 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.1.3';
+exports.SUITE_VERSION = '1.1.4';
