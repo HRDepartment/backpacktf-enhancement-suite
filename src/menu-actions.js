@@ -4,6 +4,7 @@ var actions = [];
 exports.addAction = function (obj) {
     actions.push(obj);
     if (Page.loaded) exports.applyActions();
+    return this;
 };
 
 exports.applyActions = function () {

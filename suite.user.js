@@ -38,6 +38,7 @@ Prefs
     .default('lotto', 'show', true)
     .default('notifications', 'updatecount', 'click')
     .default('classifieds', 'signature', '')
+    .default('classifieds', 'signature-buy', '')
     .default('classifieds', 'autoclose', true)
 ;
 
@@ -486,6 +487,23 @@ var Page = require('../page'),
 
 var classifiedsCache = {};
 
+function addRemoveAllListings() {
+    MenuActions.addAction({
+        name: 'Remove Listings',
+        icon: 'fa-trash-o',
+        id: 'rm-classifieds-listings',
+        click: function () {
+            Script.exec("$('.listing-remove').click().click();"); // Double .click for confirmation
+            (function refresh() {
+                setTimeout(function () {
+                    if (!$('.listing-remove').length) location.reload();
+                    else refresh();
+                }, 300);
+            }());
+        }
+    });
+}
+
 function peek(e) {
     var item = $('.item'),
         name, url;
@@ -506,41 +524,55 @@ function peek(e) {
     $.ajax({
         method: "GET",
         url: url,
-        success: function (html) {
-            $("#peak-panel").append('<div class="panel-body padded"><div id="classifieds-sellers"></div></div>');
-            var $sellers = $("#classifieds-sellers"),
-                h = $.parseHTML(html),
-                items = [],
-                clones;
+        dataType: "html"
+    }).success(function (html) {
+        $("#peak-panel").append('<div class="panel-body padded" id="peak-panel-body"></div>');
+        var $ppb = $("#peak-panel-body"),
+            h = $.parseHTML(html),
+            buyers = [],
+            sellers = [],
+            clones;
 
-            $('.item', h).each(function () {
-                var clone = this.cloneNode(true);
-                clone.classList.add('classifieds-clone');
+        $('.item', h).each(function () {
+            var clone = this.cloneNode(true);
+            clone.classList.add('classifieds-clone');
 
-                items.push(clone);
-            });
+            if (clone.dataset.listingIntent === '0') {
+                buyers.push(clone);
+            } else if (clone.dataset.listingIntent === '1') {
+                sellers.push(clone);
+            }
+        });
 
-            $sellers.html(items);
+        if (sellers.length) {
+            $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers"></div>');
+            $("#classifieds-sellers").html(sellers);
+        }
 
-            clones = $('.classifieds-clone');
-            Page.addItemPopovers(clones, $sellers);
+        if (buyers.length) {
+            $ppb.append((sellers.length ? '<br>' : '') + '<h5>Buyers</h5><div id="classifieds-buyers"></div>');
+            $("#classifieds-buyers").html(buyers);
+        }
+
+        clones = $('.classifieds-clone');
+        if (clones.length) {
+            Page.addItemPopovers(clones, $ppb);
 
             if (Pricetags.enabled()) {
                 Pricetags.setupInst(function () {
                     Pricetags.applyTagsToItems(clones);
                 });
             }
-        },
-        dataType: "html"
+        }
     });
 }
 
-function add() {
+function add(sig) {
     var htm =
-        '<div class="row"><div class="col-12 "><div class="panel" id="peak-panel">'+
+        '<div class="row"><div class="col-12 "><div class="panel panel-main" id="peak-panel">'+
         '<div class="panel-heading">Classifieds <span class="pull-right"><small><a href="#" id="classifieds-peek">Peek</a></small></span></div>'+
         '</div></div></div></div>';
-    var signature = Prefs.pref('classifieds', 'signature'),
+    var signature = Prefs.pref('classifieds', sig),
         $details = $("#details");
 
     $('#page-content .row:eq(1)').before(htm);
@@ -550,6 +582,14 @@ function add() {
         $details.val(signature);
         Script.exec('$("#details").trigger("blur");');
     }
+}
+
+function buy() {
+    add('signature-buy');
+}
+
+function sell() {
+    add('signature');
 }
 
 function checkAutoclose() {
@@ -624,6 +664,7 @@ function global() {
     var media = $('.listing-buttons').parent().filter('.listing-intent-sell'),
         listingTimes = media.find('.text-muted:first');
 
+    if ($('.listing-remove').length) addRemoveAllListings();
     if (!listingTimes.length) return;
 
     listingTimes.click(listingClick).attr('data-mode', '0');
@@ -646,7 +687,8 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/:type/:id', add);
+    page('/classifieds/buy/:quality/:name/:tradable/:craftable', buy);
+    page('/classifieds/sell/:id', sell);
     page('/classifieds/', checkAutoclose);
     global();
 }
@@ -658,23 +700,6 @@ var Prefs = require('../preferences'),
     MenuActions = require('../menu-actions'),
     Script = require('../script'),
     Page = require('../page');
-
-function addRemoveAllListings() {
-    MenuActions.addAction({
-        name: 'Remove Listings',
-        icon: 'fa-trash-o',
-        id: 'rm-classifieds-listings',
-        click: function () {
-            Script.exec("$('.listing-remove').click().click();"); // Double .click for confirmation
-            (function refresh() {
-                setTimeout(function () {
-                    if (!$('.listing-remove').length) location.reload();
-                    else refresh();
-                }, 300);
-            }());
-        }
-    });
-}
 
 function addMorePopovers(more) {
     var moreCache = {},
@@ -758,7 +783,6 @@ function global() {
 
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
-    if ($('.listing-remove').length) addRemoveAllListings();
     if (more.length) addMorePopovers(more);
 
     addDupeCheck();
@@ -900,8 +924,10 @@ function addTabContent() {
         help("Requires you to have donated and disabled ads in favor of the notifications widget (Awesome perks tab). This setting applies only to the notifications widget which is on the site index page. Updates the notifications count badge when a notification is clicked, when you have a [removed listing] notification, or always."),
 
         section('Classifieds', [
-            userInput('Signature', 'classifieds', 'signature', Prefs.pref('classifieds', 'signature')),
-            help("Message automatically inserted in the 'Message' field of Classified listings you create manually."),
+            userInput('Sell order signature', 'classifieds', 'signature', Prefs.pref('classifieds', 'signature')),
+            help("Message automatically inserted in the 'Message' field of Classified sell order listings you create manually."),
+            userInput('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
+            help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
             buttons('Auto-close when listed successfully', 'classifieds', 'autoclose', yesno(Prefs.pref('classifieds', 'autoclose'))),
             help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
         ]),
@@ -2178,6 +2204,7 @@ var actions = [];
 exports.addAction = function (obj) {
     actions.push(obj);
     if (Page.loaded) exports.applyActions();
+    return this;
 };
 
 exports.applyActions = function () {

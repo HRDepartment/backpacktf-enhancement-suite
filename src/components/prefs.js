@@ -91,8 +91,10 @@ function addTabContent() {
         help("Requires you to have donated and disabled ads in favor of the notifications widget (Awesome perks tab). This setting applies only to the notifications widget which is on the site index page. Updates the notifications count badge when a notification is clicked, when you have a [removed listing] notification, or always."),
 
         section('Classifieds', [
-            userInput('Signature', 'classifieds', 'signature', Prefs.pref('classifieds', 'signature')),
-            help("Message automatically inserted in the 'Message' field of Classified listings you create manually."),
+            userInput('Sell order signature', 'classifieds', 'signature', Prefs.pref('classifieds', 'signature')),
+            help("Message automatically inserted in the 'Message' field of Classified sell order listings you create manually."),
+            userInput('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
+            help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
             buttons('Auto-close when listed successfully', 'classifieds', 'autoclose', yesno(Prefs.pref('classifieds', 'autoclose'))),
             help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
         ]),

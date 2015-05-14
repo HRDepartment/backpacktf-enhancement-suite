@@ -3,23 +3,6 @@ var Prefs = require('../preferences'),
     Script = require('../script'),
     Page = require('../page');
 
-function addRemoveAllListings() {
-    MenuActions.addAction({
-        name: 'Remove Listings',
-        icon: 'fa-trash-o',
-        id: 'rm-classifieds-listings',
-        click: function () {
-            Script.exec("$('.listing-remove').click().click();"); // Double .click for confirmation
-            (function refresh() {
-                setTimeout(function () {
-                    if (!$('.listing-remove').length) location.reload();
-                    else refresh();
-                }, 300);
-            }());
-        }
-    });
-}
-
 function addMorePopovers(more) {
     var moreCache = {},
         moreLoading = {};
@@ -102,7 +85,6 @@ function global() {
 
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
-    if ($('.listing-remove').length) addRemoveAllListings();
     if (more.length) addMorePopovers(more);
 
     addDupeCheck();

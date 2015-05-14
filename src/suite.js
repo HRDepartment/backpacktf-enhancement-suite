@@ -16,6 +16,7 @@ Prefs
     .default('lotto', 'show', true)
     .default('notifications', 'updatecount', 'click')
     .default('classifieds', 'signature', '')
+    .default('classifieds', 'signature-buy', '')
     .default('classifieds', 'autoclose', true)
 ;
 
