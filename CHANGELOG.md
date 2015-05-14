@@ -1,3 +1,7 @@
+### v1.1.3
+Separated signature into sell order signature and buy order signature.
+Fixed Classifieds peek.
+
 ### v1.1.2
 Fixes for the May 12th, 2015 backpack.tf update.
 Removed pricetags.earbuds option.
