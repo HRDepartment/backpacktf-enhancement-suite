@@ -41,8 +41,10 @@ function applyArrows() {
 
         diff += ' ' + moment.unix(price.last_update).from(now);
 
-        stack.append("<div class='price-arrow'><i class='" + icon + "' title='" + diff + "' data-suite-tooltip></i></div>");
+        stack.append("<div class='price-arrow'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>");
     });
+
+    Page.addTooltips($('.change-tooltip'));
 }
 
 function onMenuActionClick() {

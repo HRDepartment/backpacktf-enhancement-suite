@@ -76,13 +76,11 @@ function addMenuAction() {
     });
 }
 
-function addRallHeader(elem, sep) {
-    return function () {
-        var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>' + (sep ? " | " : ""));
-        header.find('#header-refresh-all').click(refreshAll);
+function addRallHeader() {
+    var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>');
+    header.find('#header-refresh-all').click(refreshAll);
 
-        elem.append(header);
-    };
+    $('.panel-heading:contains(Sell Orders)').append(header);
 }
 
 
@@ -93,8 +91,8 @@ function load() {
 
     addButtonTooltips();
     addButtonListeners();
-    page('/classifieds/', addRallHeader($('#media-container-row-alt .panel-heading:first')));
-    page('/stats/:quality/:name/:tradable/:craftable', addRallHeader($('#page-content .panel-heading:contains(Classified)', true)));
+    page('/classifieds/', addRallHeader);
+    //page('/stats/:quality/:name/:tradable/:craftable/:priceindex?', addRallHeader(true));
     addMenuAction();
 }
 

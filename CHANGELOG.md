@@ -1,3 +1,6 @@
+### v1.1.5
+More bug fixes for the May 12th, 2015 backpack.tf update.
+
 ### v1.1.4
 Added experimental support for csgo and dota2.
 

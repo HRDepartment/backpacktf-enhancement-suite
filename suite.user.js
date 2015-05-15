@@ -3,9 +3,12 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.1.3
+// @version      1.1.5
 // @description  Enhances your backpack.tf experience.
-// @match        *://*.backpack.tf/*
+// @match        *://backpack.tf/*
+// @match        *://lv*.backpack.tf/*
+// @match        *://dota2.backpack.tf/*
+// @match        *://csgo.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
 // @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
 // @require      https://cdn.rawgit.com/caresx/steam-econcc/2551ce827114e8fd11e94feaa9681bf4aa302379/econcc.js
@@ -22,6 +25,9 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var Prefs = require('./preferences'),
     Page = require('./page');
+
+// Not a valid page, don't do anything
+if (typeof unsafeWindow.$ !== 'function') return;
 
 Page.init();
 require('./api').init();
@@ -385,8 +391,10 @@ function applyArrows() {
 
         diff += ' ' + moment.unix(price.last_update).from(now);
 
-        stack.append("<div class='price-arrow'><i class='" + icon + "' title='" + diff + "' data-suite-tooltip></i></div>");
+        stack.append("<div class='price-arrow'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>");
     });
+
+    Page.addTooltips($('.change-tooltip'));
 }
 
 function onMenuActionClick() {
@@ -621,10 +629,10 @@ function switchTimes($this, listing, obj) {
         return;
     }
 
-    if (mode === '0') { // posted
+    if (mode === '0') { // bumped
         $this.html('Created <span class="timeago listing-timeago" title="' + (new Date(list.created * 1000)).toISOString() + '">' + (moment.unix(list.created).fromNow()) + '</span> by ');
     } else { // created
-        $this.html('Posted <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span> by ');
+        $this.html('Bumped <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span> by ');
     }
 
     $this.append(handle).attr('data-mode', +!+mode);
@@ -661,7 +669,7 @@ function listingClick(next) {
 }
 
 function global() {
-    var media = $('.listing-buttons').parent().filter('.listing-intent-sell'),
+    var media = $('.listing-buttons').parent().filter(':has(.listing-intent-sell)'),
         listingTimes = media.find('.text-muted:first');
 
     if ($('.listing-remove').length) addRemoveAllListings();
@@ -687,7 +695,7 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/buy/:quality/:name/:tradable/:craftable', buy);
+    page('/classifieds/buy/:quality/:name/:tradable/:craftable/:priceindex?', buy);
     page('/classifieds/sell/:id', sell);
     page('/classifieds/', checkAutoclose);
     global();
@@ -1665,13 +1673,11 @@ function addMenuAction() {
     });
 }
 
-function addRallHeader(elem, sep) {
-    return function () {
-        var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>' + (sep ? " | " : ""));
-        header.find('#header-refresh-all').click(refreshAll);
+function addRallHeader() {
+    var header = $('<span class="pull-right"><small><a href="#" id="header-refresh-all">Refresh All</a></small></span>');
+    header.find('#header-refresh-all').click(refreshAll);
 
-        elem.append(header);
-    };
+    $('.panel-heading:contains(Sell Orders)').append(header);
 }
 
 
@@ -1682,8 +1688,8 @@ function load() {
 
     addButtonTooltips();
     addButtonListeners();
-    page('/classifieds/', addRallHeader($('#media-container-row-alt .panel-heading:first')));
-    page('/stats/:quality/:name/:tradable/:craftable', addRallHeader($('#page-content .panel-heading:contains(Classified)', true)));
+    page('/classifieds/', addRallHeader);
+    //page('/stats/:quality/:name/:tradable/:craftable/:priceindex?', addRallHeader(true));
     addMenuAction();
 }
 
@@ -2404,7 +2410,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.1.3';
+exports.SUITE_VERSION = '1.1.5';
 
 },{"./script":18}],16:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');
@@ -2507,7 +2513,7 @@ exports.fromListing = function (ec, price) {
 
 exports.fromBackpack = function (ec, price) {
     var parts = price.split(" "),
-        val = parts[0].split(/-|–/), // en dash, dash for ref (10/10)
+        val = parts[0].split(/-|–/),
         currency = parts[1],
         bc = 0;
 

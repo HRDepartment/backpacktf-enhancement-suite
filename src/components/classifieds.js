@@ -141,10 +141,10 @@ function switchTimes($this, listing, obj) {
         return;
     }
 
-    if (mode === '0') { // posted
+    if (mode === '0') { // bumped
         $this.html('Created <span class="timeago listing-timeago" title="' + (new Date(list.created * 1000)).toISOString() + '">' + (moment.unix(list.created).fromNow()) + '</span> by ');
     } else { // created
-        $this.html('Posted <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span> by ');
+        $this.html('Bumped <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span> by ');
     }
 
     $this.append(handle).attr('data-mode', +!+mode);
@@ -181,7 +181,7 @@ function listingClick(next) {
 }
 
 function global() {
-    var media = $('.listing-buttons').parent().filter('.listing-intent-sell'),
+    var media = $('.listing-buttons').parent().filter(':has(.listing-intent-sell)'),
         listingTimes = media.find('.text-muted:first');
 
     if ($('.listing-remove').length) addRemoveAllListings();
@@ -207,7 +207,7 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/buy/:quality/:name/:tradable/:craftable', buy);
+    page('/classifieds/buy/:quality/:name/:tradable/:craftable/:priceindex?', buy);
     page('/classifieds/sell/:id', sell);
     page('/classifieds/', checkAutoclose);
     global();

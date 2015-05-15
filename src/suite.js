@@ -1,6 +1,9 @@
 var Prefs = require('./preferences'),
     Page = require('./page');
 
+// Not a valid page, don't do anything
+if (typeof unsafeWindow.$ !== 'function') return;
+
 Page.init();
 require('./api').init();
 

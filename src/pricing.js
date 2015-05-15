@@ -43,7 +43,7 @@ exports.fromListing = function (ec, price) {
 
 exports.fromBackpack = function (ec, price) {
     var parts = price.split(" "),
-        val = parts[0].split(/-|–/), // en dash, dash for ref (10/10)
+        val = parts[0].split(/-|–/),
         currency = parts[1],
         bc = 0;
 
