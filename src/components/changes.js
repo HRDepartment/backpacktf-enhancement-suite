@@ -1,6 +1,7 @@
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Pricing = require('../pricing'),
+    API = require('../api'),
     MenuActions = require('../menu-actions');
 
 var period = Prefs.pref('changes', 'period'), // ms
@@ -79,7 +80,7 @@ function onMenuActionClick() {
 
     clones = $('.change-clone'); // FF support
     Page.addItemPopovers(clones, $("#change-cloned"));
-    Page.addTooltips(clones.find('[data-suite-tooltip]'), '#change-cloned');
+    Page.addTooltips(clones.find('.change-tooltip'), '#change-cloned');
 }
 
 function addMenuAction() {
@@ -125,11 +126,13 @@ function load() {
     if (Page.appid() !== 440) return; // Sorry Dota
     if (!Page.isBackpack()) return;
 
-    Pricing.ec(function (inst, pricelist) {
-        ec = inst;
-        findChanges(pricelist);
-        applyArrows();
-        addMenuAction();
+    API.IGetPrices(function (pricelist) {
+        Pricing.shared(function (inst) {
+            ec = inst;
+            findChanges(pricelist);
+            applyArrows();
+            addMenuAction();
+        });
     });
 }
 

@@ -119,7 +119,7 @@ function parseQuery(json, query) {
     if (ec) {
         processCustomResults(items);
     } else {
-        Pricing.ec(function (e) {
+        Pricing.shared(function (e) {
             ec = e;
             processCustomResults(items);
         });
@@ -171,12 +171,11 @@ function processCustomResults(items) {
                 desc = i.description,
                 descid = descids[desc],
                 styl = styleGame(i.name, descid),
-                name = styl.name,
-                price = Math.min(0.01, +(i.price.split(' ')[0].substr(1)) * 0.85);
+                name = styl.name;
 
             links
                 .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
-                        ' title="' + ec.f(price + ' usd:Long') + '">' + i.price + '</a>')
+                        ' title="' + ec.format(ec.scm(ec.parse(i.price)).seller, EconCC.Mode.Long) + '">' + i.price + '</a>')
                 .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
             ;
 

@@ -65,12 +65,12 @@ function peek(e) {
         });
 
         if (sellers.length) {
-            $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers"></div>');
+            $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers" class="row"></div>');
             $("#classifieds-sellers").html(sellers);
         }
 
         if (buyers.length) {
-            $ppb.append((sellers.length ? '<br>' : '') + '<h5>Buyers</h5><div id="classifieds-buyers"></div>');
+            $ppb.append('<h5>Buyers</h5><div id="classifieds-buyers" class="row"></div>');
             $("#classifieds-buyers").html(buyers);
         }
 
@@ -181,7 +181,7 @@ function listingClick(next) {
 }
 
 function global() {
-    var media = $('.listing-buttons').parent().filter(':has(.listing-intent-sell)'),
+    var media = $('.listing-buttons').parent(),
         listingTimes = media.find('.text-muted:first');
 
     if ($('.listing-remove').length) addRemoveAllListings();

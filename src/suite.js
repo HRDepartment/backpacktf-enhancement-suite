@@ -36,6 +36,7 @@ exec(require('./components/refresh'));
 exec(require('./components/classifieds'));
 exec(require('./components/prefs'));
 exec(require('./components/search'));
+exec(require('./components/dupes'));
 exec(require('./components/improvements'));
 exec(require('./components/users'));
 

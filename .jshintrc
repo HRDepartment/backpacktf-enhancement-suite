@@ -13,6 +13,7 @@
         "EconCC": true,
         "page": true,
         "moment": true,
-        "console": true
+        "console": true,
+        "alert": true
     }
 }

@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.1.5
+// @version      1.2.0
 // @description  Enhances your backpack.tf experience.
 // @match        *://backpack.tf/*
 // @match        *://lv*.backpack.tf/*
@@ -11,7 +11,7 @@
 // @match        *://csgo.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
 // @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
-// @require      https://cdn.rawgit.com/caresx/steam-econcc/2551ce827114e8fd11e94feaa9681bf4aa302379/econcc.js
+// @require      https://cdn.rawgit.com/caresx/steam-econcc/d3762b8978616b7f1e2086deb8fd62552b0746c0/econcc.js
 // @require      https://cdn.rawgit.com/visionmedia/page.js/1102353025a984f7c88f38538bd62ff89e1eeee6/page.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js
 // @downloadURL  https://caresx.github.io/backpacktf-enhancement-suite/suite.user.js
@@ -61,6 +61,7 @@ exec(require('./components/refresh'));
 exec(require('./components/classifieds'));
 exec(require('./components/prefs'));
 exec(require('./components/search'));
+exec(require('./components/dupes'));
 exec(require('./components/improvements'));
 exec(require('./components/users'));
 
@@ -70,7 +71,7 @@ Page.addTooltips();
 $(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;
 
-},{"./api":2,"./components/changes":4,"./components/classifieds":5,"./components/improvements":6,"./components/prefs":7,"./components/pricetags":8,"./components/quicklist":9,"./components/refresh":10,"./components/reptf":11,"./components/search":12,"./components/users":13,"./menu-actions":14,"./page":15,"./preferences":16}],2:[function(require,module,exports){
+},{"./api":2,"./components/changes":4,"./components/classifieds":5,"./components/dupes":6,"./components/improvements":7,"./components/prefs":8,"./components/pricetags":9,"./components/quicklist":10,"./components/refresh":11,"./components/reptf":12,"./components/search":13,"./components/users":14,"./menu-actions":15,"./page":16,"./preferences":17}],2:[function(require,module,exports){
 var Page = require('./page'),
     Cache = require('./cache');
 
@@ -187,10 +188,10 @@ function callInterface(meta, callback, args) {
                 console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
                 if (json.message === "API key does not exist.") {
                     removeKey();
+                    loadKey();
                     whenAvailable(function () {
                         callInterface(meta, callback, args);
                     });
-                    loadKey();
                 } else if (/^You can only request this page every/.test(json.message)) {
                     wait = json.message.match(/\d/g)[1] * 1000;
                     setTimeout(function () {
@@ -282,11 +283,11 @@ exports.IGetUserListings = function (steamid, callback, args) {
     args.steamid = steamid;
     return requestInterface({
         name: "IGetUserListings",
-        version: 1
+        version: 2
     }, callback, args);
 };
 
-},{"./cache":3,"./page":15}],3:[function(require,module,exports){
+},{"./cache":3,"./page":16}],3:[function(require,module,exports){
 var names = [];
 
 function Cache(name, pruneTime) {
@@ -351,6 +352,7 @@ module.exports.names = names;
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Pricing = require('../pricing'),
+    API = require('../api'),
     MenuActions = require('../menu-actions');
 
 var period = Prefs.pref('changes', 'period'), // ms
@@ -475,17 +477,19 @@ function load() {
     if (Page.appid() !== 440) return; // Sorry Dota
     if (!Page.isBackpack()) return;
 
-    Pricing.ec(function (inst, pricelist) {
-        ec = inst;
-        findChanges(pricelist);
-        applyArrows();
-        addMenuAction();
+    API.IGetPrices(function (pricelist) {
+        Pricing.shared(function (inst) {
+            ec = inst;
+            findChanges(pricelist);
+            applyArrows();
+            addMenuAction();
+        });
     });
 }
 
 module.exports = load;
 
-},{"../menu-actions":14,"../page":15,"../preferences":16,"../pricing":17}],5:[function(require,module,exports){
+},{"../api":2,"../menu-actions":15,"../page":16,"../preferences":17,"../pricing":18}],5:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
@@ -553,12 +557,12 @@ function peek(e) {
         });
 
         if (sellers.length) {
-            $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers"></div>');
+            $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers" class="row"></div>');
             $("#classifieds-sellers").html(sellers);
         }
 
         if (buyers.length) {
-            $ppb.append((sellers.length ? '<br>' : '') + '<h5>Buyers</h5><div id="classifieds-buyers"></div>');
+            $ppb.append((sellers.length ? '<br>' : '') + '<h5>Buyers</h5><div id="classifieds-buyers" class="row"></div>');
             $("#classifieds-buyers").html(buyers);
         }
 
@@ -669,7 +673,7 @@ function listingClick(next) {
 }
 
 function global() {
-    var media = $('.listing-buttons').parent().filter(':has(.listing-intent-sell)'),
+    var media = $('.listing-buttons').parent(),
         listingTimes = media.find('.text-muted:first');
 
     if ($('.listing-remove').length) addRemoveAllListings();
@@ -703,9 +707,117 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":14,"../page":15,"../preferences":16,"../script":18,"./pricetags":8}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":15,"../page":16,"../preferences":17,"../script":19,"./pricetags":9}],6:[function(require,module,exports){
+var Script = require('../script'),
+    Page = require('../page'),
+    MenuActions = require('../menu-actions');
+
+// Injected into the page
+function addDupeCheck() {
+    function addDupeWarn(historybtn, dupe) {
+        historybtn.removeClass('btn-default').addClass(dupe ? 'btn-danger' : 'btn-success');
+    }
+
+    function checkDuped(oid, btn) {
+        $.get("/item/" + oid, function (html) {
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            window.dupeCache[oid] = dupe;
+            window.addDupeWarn(btn, dupe);
+        });
+    }
+
+    function createDetails(item) {
+        var details = window.dupe_createDetails(item),
+            oid = item.attr('data-original-id'),
+            historybtn = details.find('.fa-calendar-o').parent();
+
+        if (window.dupeCache[oid] != null) { // undefined/null (none/in progress)
+            window.addDupeWarn(historybtn, window.dupeCache[oid]);
+        } else {
+            historybtn.mouseover(function () {
+                if (window.dupeCache[oid] !== null) { // not in progress
+                    window.dupeCache[oid] = null;
+                    setTimeout(function () {
+                        window.checkDuped(oid, historybtn);
+                    }, 80);
+                }
+            });
+        }
+
+        return details;
+    }
+
+    Script.exec('var dupe_createDetails = window.createDetails, dupeCache = {};'+
+                'window.checkDuped = ' + checkDuped + ';'+
+                'window.addDupeWarn = ' + addDupeWarn + ';'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
+function bpDupeCheck() {
+    var items = [];
+
+    if (!unsafeWindow.selection_mode) {
+        return alert("Select the items you want to dupe-check first.");
+    }
+
+    $('.item:not(.spacer,.unselected):visible').each(function () {
+        var $this = $(this),
+            stack = $this.find('.icon-stack');
+
+        if (!stack.length) {
+            $this.append('<div class="icon-stack"></div>');
+            stack = $this.find('.icon-stack');
+        }
+
+        if (stack.find('.dupe-check-result').length) return;
+
+        stack.append('<i class="fa fa-spin fa-spinner dupe-check-result"></i>');
+        items.push($this);
+    });
+
+    if (!items.length) {
+        return alert("No unchecked items in this selection");
+    }
+
+    (function next() {
+        var item = items.shift();
+
+        if (!item) return;
+        $.get("/item/" + item.attr('data-id'), function (html) {
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html),
+                res = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
+
+            if (dupe) {
+                res.addClass('fa-exclamation-circle').css('color', 'red');
+            } else {
+                res.addClass('fa-check-circle').css('color', 'green');
+            }
+
+            next();
+        });
+    }());
+}
+
+function addBackpackDupeCheck() {
+    MenuActions.addAction({
+        name: 'Dupe-Check Collection',
+        icon: 'fa-check',
+        id: 'dupe-check',
+        click: bpDupeCheck
+    });
+}
+
+function load() {
+    addDupeCheck();
+    if (Page.isBackpack()) {
+        addBackpackDupeCheck();
+    }
+}
+
+module.exports = load;
+
+},{"../menu-actions":15,"../page":16,"../script":19}],7:[function(require,module,exports){
 var Prefs = require('../preferences'),
-    MenuActions = require('../menu-actions'),
     Script = require('../script'),
     Page = require('../page');
 
@@ -743,47 +855,6 @@ function addMorePopovers(more) {
     });
 }
 
-function addDupeCheck() {
-    function addDupeWarn(historybtn, dupe) {
-        historybtn.removeClass('btn-default').addClass(dupe ? 'btn-danger' : 'btn-success');
-    }
-
-    function checkDuped(oid) {
-        $.get("/item/" + oid, function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            window.dupeCache[oid] = dupe;
-            // Use the newest history button in case user hovers away
-            window.addDupeWarn($('.popover .fa-calendar-o').parent(), dupe);
-        });
-    }
-
-    function createDetails(item) {
-        var details = window.dupe_createDetails(item),
-            oid = item.attr('data-original-id'),
-            historybtn = details.find('.fa-calendar-o').parent();
-
-        if (window.dupeCache[oid] != null) { // undefined/null (none/in progress)
-            window.addDupeWarn(historybtn, window.dupeCache[oid]);
-        } else {
-            historybtn.mouseover(function () {
-                if (window.dupeCache[oid] !== null) { // not in progress
-                    window.dupeCache[oid] = null;
-                    setTimeout(function () {
-                        window.checkDuped(oid);
-                    }, 80);
-                }
-            });
-        }
-
-        return details;
-    }
-
-    Script.exec('var dupe_createDetails = window.createDetails, dupeCache = {};'+
-                'window.checkDuped = ' + checkDuped + ';'+
-                'window.addDupeWarn = ' + addDupeWarn + ';'+
-                'window.createDetails = ' + createDetails + ';');
-}
-
 function global() {
     var account = $('#profile-dropdown-container a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -792,8 +863,6 @@ function global() {
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
-
-    addDupeCheck();
 }
 
 function index() {
@@ -824,7 +893,9 @@ function index() {
             $("#notifications_new").remove();
 
             updateNotifications();
-        } else if (updatec === 'click') {
+        }
+
+        if (updatec === 'click' || updatec === 'listing') {
             notifs.find(".notification").click(updateNotifications);
         }
     }
@@ -838,7 +909,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":14,"../page":15,"../preferences":16,"../script":18}],7:[function(require,module,exports){
+},{"../page":16,"../preferences":17,"../script":19}],8:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
@@ -1109,7 +1180,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":15,"../preferences":16,"./quicklist":9}],8:[function(require,module,exports){
+},{"../cache":3,"../page":16,"../preferences":17,"./quicklist":10}],9:[function(require,module,exports){
 var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
@@ -1179,15 +1250,13 @@ function applyTagsToItems(items) {
 
         o = {value: value || 0.001, currency: currency};
 
-        if (listing) s = {step: EconCC.Disabled};
-        else s = {};
+        if (listing) s = {step: EconCC.Disabled, currencies: {keys: {round: 1}}};
+        else s = {currencies: {keys: {round: 2}}};
 
         if (mults || !pricedef) {
             // Disable step for listings
             ec.scope(s, function () {
                 var di = $this.attr('data-defindex');
-
-                ec.currencies.keys.round = listing ? 2 : 1;
 
                 // Exception for keys
                 if (di === '5021') f = ec.formatCurrency(o);
@@ -1242,7 +1311,7 @@ module.exports.setupInst = setupInst;
 module.exports.applyTagsToItems = applyTagsToItems;
 module.exports.enabled = enabled;
 
-},{"../page":15,"../preferences":16,"../pricing":17,"../script":18}],9:[function(require,module,exports){
+},{"../page":16,"../preferences":17,"../pricing":18,"../script":19}],10:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences');
@@ -1594,7 +1663,7 @@ function load() {
 module.exports = load;
 module.exports.modifyQuicklists = modifyQuicklists;
 
-},{"../page":15,"../preferences":16,"../script":18}],10:[function(require,module,exports){
+},{"../page":16,"../preferences":17,"../script":19}],11:[function(require,module,exports){
 var MenuActions = require('../menu-actions');
 var Script = require('../script');
 
@@ -1695,7 +1764,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":14,"../script":18}],11:[function(require,module,exports){
+},{"../menu-actions":15,"../script":19}],12:[function(require,module,exports){
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -1883,7 +1952,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":15,"../script":18}],12:[function(require,module,exports){
+},{"../cache":3,"../page":16,"../script":19}],13:[function(require,module,exports){
 var Script = require('../script'),
     Pricing = require('../pricing'),
     Page = require('../page');
@@ -2005,7 +2074,7 @@ function parseQuery(json, query) {
     if (ec) {
         processCustomResults(items);
     } else {
-        Pricing.ec(function (e) {
+        Pricing.shared(function (e) {
             ec = e;
             processCustomResults(items);
         });
@@ -2057,12 +2126,11 @@ function processCustomResults(items) {
                 desc = i.description,
                 descid = descids[desc],
                 styl = styleGame(i.name, descid),
-                name = styl.name,
-                price = Math.min(0.01, +(i.price.split(' ')[0].substr(1)) * 0.85);
+                name = styl.name;
 
             links
                 .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
-                        ' title="' + ec.f(price + ' usd:Long') + '">' + i.price + '</a>')
+                        ' title="' + ec.format(ec.scm(ec.parse(i.price)).seller, EconCC.Mode.Long) + '">' + i.price + '</a>')
                 .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
             ;
 
@@ -2132,7 +2200,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":15,"../pricing":17,"../script":18}],13:[function(require,module,exports){
+},{"../page":16,"../pricing":18,"../script":19}],14:[function(require,module,exports){
 var Page = require('../page');
 
 var BadgeSelfMade = {
@@ -2204,7 +2272,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":15}],14:[function(require,module,exports){
+},{"../page":16}],15:[function(require,module,exports){
 var Page = require('./page');
 var actions = [];
 
@@ -2238,7 +2306,7 @@ exports.applyActions = function () {
     actions = [];
 };
 
-},{"./page":15}],15:[function(require,module,exports){
+},{"./page":16}],16:[function(require,module,exports){
 var Script = require('./script');
 
 var nonNumerical = /\D/g;
@@ -2410,9 +2478,9 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.1.5';
+exports.SUITE_VERSION = '1.2.0';
 
-},{"./script":18}],16:[function(require,module,exports){
+},{"./script":19}],17:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');
 
 exports.dirty = false;
@@ -2467,20 +2535,45 @@ exports.applyPrefs = function (prefs) {
     return this;
 };
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 var Prefs = require('./preferences'),
-    API = require('./api');
+    API = require('./api'),
+    ec, cur;
+
+exports.shared = function (cb) {
+    if (cur && !ec) ec = new EconCC(cur);
+
+    if (ec) {
+        return cb(ec, cur);
+    }
+
+    exports.ec(function (e, c) {
+        ec = e;
+        cur = c;
+
+        cb(e);
+    });
+};
 
 exports.ec = function (cb) {
-    API.IGetPrices(function (pricelist) {
-        API.IGetCurrencies(function (currencies) {
-            var ec = new EconCC(currencies, pricelist);
-            ec.step = Prefs.pref('pricing', 'step');
-            ec.range = Prefs.pref('pricing', 'range');
-            delete ec.currencies.earbuds;
+    function inst(currencies) {
+        var e = new EconCC(currencies);
+        e.step = Prefs.pref('pricing', 'step');
+        e.range = Prefs.pref('pricing', 'range');
+        delete e.currencies.earbuds;
+        return e;
+    }
 
-            cb(ec, pricelist, currencies);
-        });
+    if (cur) {
+        return cb(inst(cur));
+    }
+
+    API.IGetCurrencies(function (currencies) {
+        if (!cur) {
+            cur = currencies;
+        }
+
+        cb(inst(currencies));
     });
 };
 
@@ -2512,23 +2605,13 @@ exports.fromListing = function (ec, price) {
 };
 
 exports.fromBackpack = function (ec, price) {
-    var parts = price.split(" "),
-        val = parts[0].split(/-|–/),
-        currency = parts[1],
-        bc = 0;
-
-    if (val[0][0] === '$') {
-        val[0] = val[0].substr(1);
-        currency = 'usd';
-    }
-
-    bc = ec.convertToBC(ec.valueFromRange({low: +val[0], high: +val[1], currency: currency}), currency);
-    return {value: bc, currency: currency};
+    var val = ec.parse(price);
+    return {value: ec.convertToBC(val), currency: val.currency};
 };
 
 exports.unufx = {"Green Confetti":6,"Purple Confetti":7,"Haunted Ghosts":8,"Green Energy":9,"Purple Energy":10,"Circling TF Logo":11,"Massed Flies":12,"Burning Flames":13,"Scorching Flames":14,"Searing Plasma":15,"Vivid Plasma":16,"Sunbeams":17,"Circling Peace Sign":18,"Circling Heart":19,"Stormy Storm":29,"Blizzardy Storm":30,"Nuts n' Bolts":31,"Orbiting Planets":32,"Orbiting Fire":33,"Bubbling":34,"Smoking":35,"Steaming":36,"Flaming Lantern":37,"Cloudy Moon":38,"Cauldron Bubbles":39,"Eerie Orbiting Fire":40,"Knifestorm":43,"Misty Skull":44,"Harvest Moon":45,"It's A Secret To Everybody":46,"Stormy 13th Hour":47,"Attrib_Particle55":55,"Kill-a-Watt":56,"Terror-Watt":57,"Cloud 9":58,"Aces High":59,"Dead Presidents":60,"Miami Nights":61,"Disco Beat Down":62,"Phosphorous":63,"Sulphurous":64,"Memory Leak":65,"Overclocked":66,"Electrostatic":67,"Power Surge":68,"Anti-Freeze":69,"Time Warp":70,"Green Black Hole":71,"Roboactive":72,"Arcana":73,"Spellbound":74,"Chiroptera Venenata":75,"Poisoned Shadows":76,"Something Burning This Way Comes":77,"Hellfire":78,"Darkblaze":79,"Demonflame":80,"Bonzo The All-Gnawing":81,"Amaranthine":82,"Stare From Beyond":83,"The Ooze":84,"Ghastly Ghosts Jr":85,"Haunted Phantasm Jr":86,"Showstopper":3001,"Holy Grail":3003,"'72":3004,"Fountain of Delight":3005,"Screaming Tiger":3006,"Skill Gotten Gains":3007,"Midnight Whirlwind":3008,"Silver Cyclone":3009,"Mega Strike":3010,"Haunted Phantasm":3011,"Ghastly Ghosts":3012,"Frostbite":87,"Molten Mallard":88,"Morning Glory":89,"Death at Dusk":90};
 
-},{"./api":2,"./preferences":16}],18:[function(require,module,exports){
+},{"./api":2,"./preferences":17}],19:[function(require,module,exports){
 exports.exec = function (code) {
     var scr = document.createElement('script'),
         elem = (document.body || document.head || document.documentElement);

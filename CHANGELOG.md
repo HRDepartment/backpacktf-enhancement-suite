@@ -1,3 +1,8 @@
+### v1.2.0
+Dupe check selection menu action in backpacks.
+Creation time for buy orders.
+Bugfixes.
+
 ### v1.1.5
 More bug fixes for the May 12th, 2015 backpack.tf update.
 

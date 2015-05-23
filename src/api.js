@@ -114,10 +114,10 @@ function callInterface(meta, callback, args) {
                 console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
                 if (json.message === "API key does not exist.") {
                     removeKey();
+                    loadKey();
                     whenAvailable(function () {
                         callInterface(meta, callback, args);
                     });
-                    loadKey();
                 } else if (/^You can only request this page every/.test(json.message)) {
                     wait = json.message.match(/\d/g)[1] * 1000;
                     setTimeout(function () {
@@ -209,6 +209,6 @@ exports.IGetUserListings = function (steamid, callback, args) {
     args.steamid = steamid;
     return requestInterface({
         name: "IGetUserListings",
-        version: 1
+        version: 2
     }, callback, args);
 };

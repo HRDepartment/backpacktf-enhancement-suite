@@ -67,15 +67,13 @@ function applyTagsToItems(items) {
 
         o = {value: value || 0.001, currency: currency};
 
-        if (listing) s = {step: EconCC.Disabled};
-        else s = {};
+        if (listing) s = {step: EconCC.Disabled, currencies: {keys: {round: 1}}};
+        else s = {currencies: {keys: {round: 2}}};
 
         if (mults || !pricedef) {
             // Disable step for listings
             ec.scope(s, function () {
                 var di = $this.attr('data-defindex');
-
-                ec.currencies.keys.round = listing ? 2 : 1;
 
                 // Exception for keys
                 if (di === '5021') f = ec.formatCurrency(o);
