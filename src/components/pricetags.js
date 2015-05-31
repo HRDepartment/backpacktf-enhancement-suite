@@ -46,7 +46,8 @@ function applyTagsToItems(items) {
             currency = price.currency,
             eq = $this.find('.equipped'),
             mults = 0,
-            f, o, s;
+            s = {},
+            f, o;
 
         if (!listing) {
             mults = modmults(this);
@@ -67,11 +68,11 @@ function applyTagsToItems(items) {
 
         o = {value: value || 0.001, currency: currency};
 
-        if (listing) s = {step: EconCC.Disabled, currencies: {keys: {round: 1}}};
-        else s = {currencies: {keys: {round: 2}}};
+        // Disable step for listings
+        if (listing) s = {step: EconCC.Disabled};
+        else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         if (mults || !pricedef) {
-            // Disable step for listings
             ec.scope(s, function () {
                 var di = $this.attr('data-defindex');
 

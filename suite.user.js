@@ -3,17 +3,16 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.2.0.1
+// @version      1.2.1
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
 // @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
-// @require      https://cdn.rawgit.com/caresx/steam-econcc/d3762b8978616b7f1e2086deb8fd62552b0746c0/econcc.js
+// @require      https://cdn.rawgit.com/caresx/steam-econcc/6a2bc2d4abfab4fe9b46aae5ab07aa1db6a544cd/econcc.js
 // @require      https://cdn.rawgit.com/visionmedia/page.js/1102353025a984f7c88f38538bd62ff89e1eeee6/page.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js
 // @downloadURL  https://caresx.github.io/backpacktf-enhancement-suite/suite.user.js
 // @updateURL    https://caresx.github.io/backpacktf-enhancement-suite/suite.meta.js
-// @run-at       document-end
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // ==/UserScript==
@@ -24,7 +23,7 @@ var Prefs = require('./preferences'),
     Page = require('./page');
 
 // Not a valid page, don't do anything
-if (typeof unsafeWindow.$ !== 'function') return;
+if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefined') return;
 
 Page.init();
 require('./api').init();
@@ -43,6 +42,12 @@ Prefs
     .default('classifieds', 'signature', '')
     .default('classifieds', 'signature-buy', '')
     .default('classifieds', 'autoclose', true)
+    .default('homebg', 'image', '')
+    .default('homebg', 'repeat', 'no-repeat')
+    .default('homebg', 'posy', 'top')
+    .default('homebg', 'posx', 'center')
+    .default('homebg', 'attachment', 'scroll')
+    .default('homebg', 'sizing', 'contain')
 ;
 
 function exec(mod) {
@@ -862,6 +867,14 @@ function global() {
     if (more.length) addMorePopovers(more);
 }
 
+function applyWallpaper() {
+    var wallpaper = Prefs.prefs.features.homebg;
+
+    if (wallpaper.image.trim()) {
+        document.body.style.cssText = 'background: url(' + wallpaper.image + '); background-repeat: ' + wallpaper.repeat + '; background-position: ' + wallpaper.posx + ' ' + wallpaper.posy + '; background-attachment: ' + wallpaper.attachment + '; background-size: ' + wallpaper.sizing + ';';
+    }
+}
+
 function index() {
     function updateNotifications() {
         if (!notifsu) {
@@ -896,6 +909,8 @@ function index() {
             notifs.find(".notification").click(updateNotifications);
         }
     }
+
+    applyWallpaper();
 }
 
 function load() {
@@ -1070,6 +1085,56 @@ function addTabContent() {
             ], Prefs.pref('changes', 'period'))),
         ]),
 
+        section('Recent price changes in backpacks', [
+            help("Only Team Fortress 2 is supported by this feature."),
+
+            buttons('Enabled', 'changes', 'enabled', yesno(Prefs.enabled('changes'))),
+            help("Shows recent price changes on backpack pages you visit."),
+
+            buttons('Price change period', 'changes', 'period', choice([
+                {value: (1000 * 60 * 60 * 8), label: '8 hours'},
+                {value: (1000 * 60 * 60 * 24), label: '1 day'},
+                {value: (1000 * 60 * 60 * 24 * 3), label: '3 days'},
+                {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
+                {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
+            ], Prefs.pref('changes', 'period'))),
+        ]),
+
+        section('Custom homepage background', [
+            userInput('Background image url', 'homebg', 'image', Prefs.pref('homebg', 'image')),
+            help("Leave blank to disable this feature."),
+
+            buttons('Background repeat', 'homebg', 'repeat', choice([
+                {value: 'no-repeat', label: "Don't repeat"},
+                {value: 'repeat', label: "Tiled"},
+                {value: 'repeat-x', label: 'Repeat horizontally'},
+                {value: 'repeat-y', label: 'Repeat veritcally'},
+            ], Prefs.pref('homebg', 'repeat'))),
+
+            buttons('Background veritcal position', 'homebg', 'posy', choice([
+                {value: 'top', label: "Top"},
+                {value: 'center', label: "Center"},
+                {value: 'bottom', label: "Bottom"},
+            ], Prefs.pref('homebg', 'posy'))),
+
+            buttons('Background horizontal position', 'homebg', 'posx', choice([
+                {value: 'left', label: "Left"},
+                {value: 'center', label: "Center"},
+                {value: 'right', label: "Right"},
+            ], Prefs.pref('homebg', 'posx'))),
+
+            buttons('Background attachment', 'homebg', 'attachment', choice([
+                {value: 'scroll', label: "Scroll with page"},
+                {value: 'fixed', label: "Fixed"},
+            ], Prefs.pref('homebg', 'attachment'))),
+
+            buttons('Background sizing', 'homebg', 'sizing', choice([
+                {value: 'none', label: "None"},
+                {value: 'cover', label: "Fill"},
+                {value: 'contain', label: "Contain"},
+            ], Prefs.pref('homebg', 'sizing'))),
+        ]),
+
         section('Advanced', [
             button('Reset preferences', 'reset-prefs'),
             help('Resets your preferences (including quicklists) to the default and reloades the page.'),
@@ -1226,7 +1291,8 @@ function applyTagsToItems(items) {
             currency = price.currency,
             eq = $this.find('.equipped'),
             mults = 0,
-            f, o, s;
+            s = {},
+            f, o;
 
         if (!listing) {
             mults = modmults(this);
@@ -1247,11 +1313,11 @@ function applyTagsToItems(items) {
 
         o = {value: value || 0.001, currency: currency};
 
-        if (listing) s = {step: EconCC.Disabled, currencies: {keys: {round: 1}}};
-        else s = {currencies: {keys: {round: 2}}};
+        // Disable step for listings
+        if (listing) s = {step: EconCC.Disabled};
+        else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         if (mults || !pricedef) {
-            // Disable step for listings
             ec.scope(s, function () {
                 var di = $this.attr('data-defindex');
 
@@ -2475,7 +2541,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.2.0';
+exports.SUITE_VERSION = '1.2.1';
 
 },{"./script":19}],17:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');

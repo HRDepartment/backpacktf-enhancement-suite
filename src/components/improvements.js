@@ -46,6 +46,14 @@ function global() {
     if (more.length) addMorePopovers(more);
 }
 
+function applyWallpaper() {
+    var wallpaper = Prefs.prefs.features.homebg;
+
+    if (wallpaper.image.trim()) {
+        document.body.style.cssText = 'background: url(' + wallpaper.image + '); background-repeat: ' + wallpaper.repeat + '; background-position: ' + wallpaper.posx + ' ' + wallpaper.posy + '; background-attachment: ' + wallpaper.attachment + '; background-size: ' + wallpaper.sizing + ';';
+    }
+}
+
 function index() {
     function updateNotifications() {
         if (!notifsu) {
@@ -80,6 +88,8 @@ function index() {
             notifs.find(".notification").click(updateNotifications);
         }
     }
+
+    applyWallpaper();
 }
 
 function load() {

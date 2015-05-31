@@ -161,6 +161,56 @@ function addTabContent() {
             ], Prefs.pref('changes', 'period'))),
         ]),
 
+        section('Recent price changes in backpacks', [
+            help("Only Team Fortress 2 is supported by this feature."),
+
+            buttons('Enabled', 'changes', 'enabled', yesno(Prefs.enabled('changes'))),
+            help("Shows recent price changes on backpack pages you visit."),
+
+            buttons('Price change period', 'changes', 'period', choice([
+                {value: (1000 * 60 * 60 * 8), label: '8 hours'},
+                {value: (1000 * 60 * 60 * 24), label: '1 day'},
+                {value: (1000 * 60 * 60 * 24 * 3), label: '3 days'},
+                {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
+                {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
+            ], Prefs.pref('changes', 'period'))),
+        ]),
+
+        section('Custom homepage background', [
+            userInput('Background image url', 'homebg', 'image', Prefs.pref('homebg', 'image')),
+            help("Leave blank to disable this feature."),
+
+            buttons('Background repeat', 'homebg', 'repeat', choice([
+                {value: 'no-repeat', label: "Don't repeat"},
+                {value: 'repeat', label: "Tiled"},
+                {value: 'repeat-x', label: 'Repeat horizontally'},
+                {value: 'repeat-y', label: 'Repeat veritcally'},
+            ], Prefs.pref('homebg', 'repeat'))),
+
+            buttons('Background veritcal position', 'homebg', 'posy', choice([
+                {value: 'top', label: "Top"},
+                {value: 'center', label: "Center"},
+                {value: 'bottom', label: "Bottom"},
+            ], Prefs.pref('homebg', 'posy'))),
+
+            buttons('Background horizontal position', 'homebg', 'posx', choice([
+                {value: 'left', label: "Left"},
+                {value: 'center', label: "Center"},
+                {value: 'right', label: "Right"},
+            ], Prefs.pref('homebg', 'posx'))),
+
+            buttons('Background attachment', 'homebg', 'attachment', choice([
+                {value: 'scroll', label: "Scroll with page"},
+                {value: 'fixed', label: "Fixed"},
+            ], Prefs.pref('homebg', 'attachment'))),
+
+            buttons('Background sizing', 'homebg', 'sizing', choice([
+                {value: 'none', label: "None"},
+                {value: 'cover', label: "Fill"},
+                {value: 'contain', label: "Contain"},
+            ], Prefs.pref('homebg', 'sizing'))),
+        ]),
+
         section('Advanced', [
             button('Reset preferences', 'reset-prefs'),
             help('Resets your preferences (including quicklists) to the default and reloades the page.'),

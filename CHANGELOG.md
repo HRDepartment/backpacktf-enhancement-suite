@@ -1,3 +1,7 @@
+### v1.2.1
+Homepage wallpaper preference.
+Bugfixes.
+
 ### v1.2.0
 Dupe check selection menu action in backpacks.
 Creation time for buy orders.

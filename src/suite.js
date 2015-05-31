@@ -2,7 +2,7 @@ var Prefs = require('./preferences'),
     Page = require('./page');
 
 // Not a valid page, don't do anything
-if (typeof unsafeWindow.$ !== 'function') return;
+if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefined') return;
 
 Page.init();
 require('./api').init();
@@ -21,6 +21,12 @@ Prefs
     .default('classifieds', 'signature', '')
     .default('classifieds', 'signature-buy', '')
     .default('classifieds', 'autoclose', true)
+    .default('homebg', 'image', '')
+    .default('homebg', 'repeat', 'no-repeat')
+    .default('homebg', 'posy', 'top')
+    .default('homebg', 'posx', 'center')
+    .default('homebg', 'attachment', 'scroll')
+    .default('homebg', 'sizing', 'contain')
 ;
 
 function exec(mod) {
