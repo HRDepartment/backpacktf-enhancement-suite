@@ -89,7 +89,7 @@ function peek(e) {
 
 function add(sig) {
     var htm =
-        '<div class="row"><div class="col-12 "><div class="panel panel-main" id="peak-panel">'+
+        '<div class="row"><div class="col-md-12 "><div class="panel panel-main" id="peak-panel">'+
         '<div class="panel-heading">Classifieds <span class="pull-right"><small><a href="#" id="classifieds-peek">Peek</a></small></span></div>'+
         '</div></div></div></div>';
     var signature = Prefs.pref('classifieds', sig),

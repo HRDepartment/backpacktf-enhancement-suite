@@ -44,6 +44,16 @@ function global() {
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
+
+    if (Prefs.pref('other', 'originalkeys')) {
+        $('[data-converted-from]').each(function () {
+            var $this = $(this),
+                output = $this.find('.output');
+
+            $this.find('.item-icon').css('background-image', output.css('background-image'));
+            output.remove();
+        });
+    }
 }
 
 function applyWallpaper() {

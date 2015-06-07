@@ -64,13 +64,7 @@ function qlFormatValue(value, short) {
 
 function addStyles() {
     Page.addStyle(
-        ".ql-button-value-idx { margin-right: 3px; }"+
-        ".ql-button-value { width: 70px; height: 32px; margin-bottom: 3px; margin-top: -2px; }"+
-        ".ql-message { height: 32px; margin-bottom: 15px; }"+
-        ".ql-button-message-label { margin-top: 4px; margin-left: 1px; }"+
-        ".ql-remove-button { margin-left: 45px; }"+
-        ".ql-label { display: inline-block; }"+
-        ".ql-label-metal { padding-left: 1px; } .ql-label-keys { padding-left: 39px; }"
+        ".ql-button-value-idx { margin-right: 3px; }"
     );
 }
 
@@ -79,14 +73,18 @@ function quicklistSelectHtml(value, idx) {
 }
 
 function quicklistBtnHtml(metal, keys, message, remove) {
-    return '<div class="ql-button-values form-inline">'+
-        '<div class="ql-label ql-label-metal"><label>Metal</label></div>'+
-        ' <div class="ql-label ql-label-keys"><label>Keys</label></div>'+
-        (remove !== false ? '<a class="btn btn-primary btn-xs ql-remove-button">Remove</a>' : '') + '<br>'+
-        '<input type="number" class="ql-button-value ql-metal form-control" value="' + metal + '"> '+
-        '<input type="number" class="ql-button-value ql-keys form-control" value="' + keys + '"> '+
-        '<br><label class="ql-button-message-label">Message </label> '+
-        '<input type="text" class="ql-message form-control" value="' + Page.escapeHtml(message) + '">'+
+    return '<div class="ql-button-values">'+
+        '<div class="row">'+
+            '<div class="col-md-3"><label>Metal</label>'+
+            '<input type="text" placeholder="0" class="col-md-3 ql-metal form-control" value="' + metal + '"></div>'+
+            '<div class="col-md-3"><label>Keys</label>'+
+            '<input type="text" placeholder="0" class="col-md-3 ql-keys form-control" value="' + keys + '"></div>'+
+        (remove !== false ? '<a class="btn btn-primary btn-xs ql-remove-button">Remove</a>' : '')+
+        '</div>'+
+        '<div class="row">'+
+            '<div class="col-md-12"><label>Message</label>'+
+            '<input type="text" class="col-md-3 form-control ql-message" value="' + Page.escapeHtml(message) + '"></div>'+
+        '</div>'+
         '</div>';
 }
 

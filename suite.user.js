@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.2.1
+// @version      1.2.2
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -48,6 +48,7 @@ Prefs
     .default('homebg', 'posx', 'center')
     .default('homebg', 'attachment', 'scroll')
     .default('homebg', 'sizing', 'contain')
+    .default('other', 'originalkeys', false)
 ;
 
 function exec(mod) {
@@ -583,7 +584,7 @@ function peek(e) {
 
 function add(sig) {
     var htm =
-        '<div class="row"><div class="col-12 "><div class="panel panel-main" id="peak-panel">'+
+        '<div class="row"><div class="col-md-12 "><div class="panel panel-main" id="peak-panel">'+
         '<div class="panel-heading">Classifieds <span class="pull-right"><small><a href="#" id="classifieds-peek">Peek</a></small></span></div>'+
         '</div></div></div></div>';
     var signature = Prefs.pref('classifieds', sig),
@@ -865,6 +866,16 @@ function global() {
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
+
+    if (Prefs.pref('other', 'originalkeys')) {
+        $('[data-converted-from]').each(function () {
+            var $this = $(this),
+                output = $this.find('.output');
+
+            $this.find('.item-icon').css('background-image', output.css('background-image'));
+            output.remove();
+        });
+    }
 }
 
 function applyWallpaper() {
@@ -1003,9 +1014,6 @@ function addTabContent() {
         '<h3>backpack.tf Enhancement Suite <span class="text-muted">v' + Page.SUITE_VERSION + '</span></h3>',
         '<div class="padded">',
 
-        buttons('Show lotto', 'lotto', 'show', yesno(Prefs.pref('lotto', 'show'))),
-        help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
-
         buttons('Notifications widget', 'notifications', 'updatecount', choice([
             {value: 'no', label: 'No'},
             {value: 'click', label: 'Notification click'},
@@ -1133,6 +1141,16 @@ function addTabContent() {
                 {value: 'cover', label: "Fill"},
                 {value: 'contain', label: "Contain"},
             ], Prefs.pref('homebg', 'sizing'))),
+        ]),
+
+        section('Other', [
+            help("Preferences that don't deserve their own section."),
+
+            buttons('Show lotto', 'lotto', 'show', yesno(Prefs.pref('lotto', 'show'))),
+            help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
+
+            buttons('Use original key icons', 'other', 'originalkeys', yesno(Prefs.pref('other', 'originalkeys'))),
+            help("Shows the original key's icon (for converted event keys) full size.")
         ]),
 
         section('Advanced', [
@@ -1441,13 +1459,7 @@ function qlFormatValue(value, short) {
 
 function addStyles() {
     Page.addStyle(
-        ".ql-button-value-idx { margin-right: 3px; }"+
-        ".ql-button-value { width: 70px; height: 32px; margin-bottom: 3px; margin-top: -2px; }"+
-        ".ql-message { height: 32px; margin-bottom: 15px; }"+
-        ".ql-button-message-label { margin-top: 4px; margin-left: 1px; }"+
-        ".ql-remove-button { margin-left: 45px; }"+
-        ".ql-label { display: inline-block; }"+
-        ".ql-label-metal { padding-left: 1px; } .ql-label-keys { padding-left: 39px; }"
+        ".ql-button-value-idx { margin-right: 3px; }"
     );
 }
 
@@ -1456,14 +1468,18 @@ function quicklistSelectHtml(value, idx) {
 }
 
 function quicklistBtnHtml(metal, keys, message, remove) {
-    return '<div class="ql-button-values form-inline">'+
-        '<div class="ql-label ql-label-metal"><label>Metal</label></div>'+
-        ' <div class="ql-label ql-label-keys"><label>Keys</label></div>'+
-        (remove !== false ? '<a class="btn btn-primary btn-xs ql-remove-button">Remove</a>' : '') + '<br>'+
-        '<input type="number" class="ql-button-value ql-metal form-control" value="' + metal + '"> '+
-        '<input type="number" class="ql-button-value ql-keys form-control" value="' + keys + '"> '+
-        '<br><label class="ql-button-message-label">Message </label> '+
-        '<input type="text" class="ql-message form-control" value="' + Page.escapeHtml(message) + '">'+
+    return '<div class="ql-button-values">'+
+        '<div class="row">'+
+            '<div class="col-md-3"><label>Metal</label>'+
+            '<input type="text" placeholder="0" class="col-md-3 ql-metal form-control" value="' + metal + '"></div>'+
+            '<div class="col-md-3"><label>Keys</label>'+
+            '<input type="text" placeholder="0" class="col-md-3 ql-keys form-control" value="' + keys + '"></div>'+
+        (remove !== false ? '<a class="btn btn-primary btn-xs ql-remove-button">Remove</a>' : '')+
+        '</div>'+
+        '<div class="row">'+
+            '<div class="col-md-12"><label>Message</label>'+
+            '<input type="text" class="col-md-3 form-control ql-message" value="' + Page.escapeHtml(message) + '"></div>'+
+        '</div>'+
         '</div>';
 }
 
@@ -2541,7 +2557,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.2.1';
+exports.SUITE_VERSION = '1.2.2';
 
 },{"./script":19}],17:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');

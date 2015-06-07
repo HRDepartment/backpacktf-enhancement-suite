@@ -27,6 +27,7 @@ Prefs
     .default('homebg', 'posx', 'center')
     .default('homebg', 'attachment', 'scroll')
     .default('homebg', 'sizing', 'contain')
+    .default('other', 'originalkeys', false)
 ;
 
 function exec(mod) {

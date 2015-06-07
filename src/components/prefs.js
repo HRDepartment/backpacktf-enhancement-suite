@@ -79,9 +79,6 @@ function addTabContent() {
         '<h3>backpack.tf Enhancement Suite <span class="text-muted">v' + Page.SUITE_VERSION + '</span></h3>',
         '<div class="padded">',
 
-        buttons('Show lotto', 'lotto', 'show', yesno(Prefs.pref('lotto', 'show'))),
-        help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
-
         buttons('Notifications widget', 'notifications', 'updatecount', choice([
             {value: 'no', label: 'No'},
             {value: 'click', label: 'Notification click'},
@@ -209,6 +206,16 @@ function addTabContent() {
                 {value: 'cover', label: "Fill"},
                 {value: 'contain', label: "Contain"},
             ], Prefs.pref('homebg', 'sizing'))),
+        ]),
+
+        section('Other', [
+            help("Preferences that don't deserve their own section."),
+
+            buttons('Show lotto', 'lotto', 'show', yesno(Prefs.pref('lotto', 'show'))),
+            help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
+
+            buttons('Use original key icons', 'other', 'originalkeys', yesno(Prefs.pref('other', 'originalkeys'))),
+            help("Shows the original key's icon (for converted event keys) full size.")
         ]),
 
         section('Advanced', [

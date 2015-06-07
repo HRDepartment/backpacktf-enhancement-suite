@@ -1,3 +1,7 @@
+### v1.2.2
+Converted keys can now show their original icon full size. (pref)
+Style fixes.
+
 ### v1.2.1
 Homepage wallpaper preference.
 Bugfixes.

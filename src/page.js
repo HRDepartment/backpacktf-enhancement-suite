@@ -169,4 +169,4 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.2.1';
+exports.SUITE_VERSION = '1.2.2';
