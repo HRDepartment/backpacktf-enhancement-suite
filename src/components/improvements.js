@@ -37,7 +37,7 @@ function addMorePopovers(more) {
 }
 
 function global() {
-    var account = $('#profile-dropdown-container a[href="/my/account"]'),
+    var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
         more = $('.text-more');
 

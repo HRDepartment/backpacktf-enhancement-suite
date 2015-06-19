@@ -14,6 +14,7 @@
         "page": true,
         "moment": true,
         "console": true,
-        "alert": true
+        "alert": true,
+        "GM_info": true
     }
 }

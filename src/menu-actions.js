@@ -12,7 +12,7 @@ exports.applyActions = function () {
     if (!actions.length) return;
 
     if (!document.getElementById('bp-custom-actions')) {
-        $('#profile-dropdown-container .dropdown-menu .divider').eq(1).after('<li class="divider" id="bp-custom-actions"></li>');
+        $('.navbar-profile-nav .dropdown-menu .divider').eq(1).after('<li class="divider" id="bp-custom-actions"></li>');
     }
 
     var html = "";

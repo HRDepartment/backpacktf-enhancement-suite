@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.2.2
+// @version      1.2.3
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -859,7 +859,7 @@ function addMorePopovers(more) {
 }
 
 function global() {
-    var account = $('#profile-dropdown-container a[href="/my/account"]'),
+    var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
         more = $('.text-more');
 
@@ -1707,7 +1707,7 @@ function addSelectPageButtons() {
 
         if (!$this.nextUntil('.pagenum').not('.spacer').filter(':visible').length) return;
         $this.attr('data-page-num', page);
-        label.after('<span class="btn btn-primary btn-xs pull-right select-page" data-page="' + page + '" style="margin-right: 16px;">Select Page</span>');
+        label.after('<span class="btn btn-primary btn-xs pull-right select-page" data-page="' + page + '" style="margin-right: 2.7%;margin-top: -0.1%;">Select Page</span>');
     });
 }
 
@@ -2366,7 +2366,7 @@ exports.applyActions = function () {
     if (!actions.length) return;
 
     if (!document.getElementById('bp-custom-actions')) {
-        $('#profile-dropdown-container .dropdown-menu .divider').eq(1).after('<li class="divider" id="bp-custom-actions"></li>');
+        $('.navbar-profile-nav .dropdown-menu .divider').eq(1).after('<li class="divider" id="bp-custom-actions"></li>');
     }
 
     var html = "";
@@ -2411,7 +2411,7 @@ function getter(name, val) {
 
 exports.init = function () {
     state.steamid = $('.profile .avatar-container a')[0] || "";
-    state.loggedin = !!document.getElementById("profile-dropdown-container");
+    state.loggedin = $('.navbar-profile-nav .dropdown-menu').length;
 
     if (state.steamid) {
         state.profile = true;
@@ -2420,12 +2420,12 @@ exports.init = function () {
     }
 
     if (state.loggedin) {
-        state.ownid = $('#profile-dropdown-container .fa-briefcase').parent().attr('href').replace(nonNumerical, '');
+        state.ownid = $('.navbar-profile-nav .dropdown-menu .fa-briefcase').parent().attr('href').replace(nonNumerical, '');
         if (state.profile) {
             state.ownprofile = state.ownid === state.steamid;
         }
 
-        state.token = unsafeWindow.userID || $('#profile-dropdown-container .fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
+        state.token = unsafeWindow.userID || $('.navbar-profile-nav .dropdown-menu .fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
         state.ownbackpack = state.ownprofile && state.backpack;
     }
 
@@ -2557,7 +2557,7 @@ exports.escapeHtml = function (message) {
 
 exports.addStyle = GM_addStyle;
 
-exports.SUITE_VERSION = '1.2.2';
+exports.SUITE_VERSION = GM_info.script.version;
 
 },{"./script":19}],17:[function(require,module,exports){
 var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');

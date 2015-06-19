@@ -312,7 +312,7 @@ function addSelectPageButtons() {
 
         if (!$this.nextUntil('.pagenum').not('.spacer').filter(':visible').length) return;
         $this.attr('data-page-num', page);
-        label.after('<span class="btn btn-primary btn-xs pull-right select-page" data-page="' + page + '" style="margin-right: 16px;">Select Page</span>');
+        label.after('<span class="btn btn-primary btn-xs pull-right select-page" data-page="' + page + '" style="margin-right: 2.7%;margin-top: -0.1%;">Select Page</span>');
     });
 }
 
