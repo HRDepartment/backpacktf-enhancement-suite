@@ -49,6 +49,7 @@ function autofillLowest(clones, auto) {
     if (lowest) {
         metal.val(lowest.metal);
         keys.val(lowest.keys);
+        unsafeWindow.updateFormState();
     }
 }
 
@@ -170,6 +171,8 @@ function addAutofill() {
                 metal.val(parseFloat(ec.formatCurrency(m)));
             });
         }
+
+        unsafeWindow.updateFormState();
     });
 }
 

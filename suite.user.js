@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.0
+// @version      1.3.0.1
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -545,6 +545,7 @@ function autofillLowest(clones, auto) {
     if (lowest) {
         metal.val(lowest.metal);
         keys.val(lowest.keys);
+        unsafeWindow.updateFormState();
     }
 }
 
@@ -666,6 +667,8 @@ function addAutofill() {
                 metal.val(parseFloat(ec.formatCurrency(m)));
             });
         }
+
+        unsafeWindow.updateFormState();
     });
 }
 
