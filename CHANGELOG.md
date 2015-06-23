@@ -1,3 +1,6 @@
+### v1.3.0
+Classifieds sell listing value auto-fill.
+
 ### v1.2.3
 Fixes for the Search Update.
 

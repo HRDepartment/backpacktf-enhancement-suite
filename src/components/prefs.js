@@ -94,17 +94,24 @@ function addTabContent() {
             help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
             buttons('Auto-close when listed successfully', 'classifieds', 'autoclose', yesno(Prefs.pref('classifieds', 'autoclose'))),
             help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
-        ]),
-
-        section('rep.tf integration', [
-            buttons('Enabled', 'reptf', 'enabled', yesno(Prefs.enabled('reptf'))),
-            help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
+            buttons('Auto-fill price', 'classifieds', 'autofill', choice([
+                {value: 'backpack', label: 'backpack.tf'},
+                {value: 'lowestauto', label: "Lowest automatic listing"},
+                {value: 'lowest', label: "Lowest listing"},
+                {value: 'default', label: 'Disabled'},
+            ], Prefs.pref('classifieds', 'autofill'))),
+            help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used manually. For those options, if there are no (automatic) listings, nothing will be auto-filled."),
         ]),
 
         section('Classifieds quicklisting', [
             buttons('Enabled', 'quicklist', 'enabled', yesno(Prefs.enabled('quicklist'))),
             help("Adds Select Page buttons to your profile. Once you have selected some items, click on the 'Quicklist selection' button. You can select a pre-defined price/message (click the button below) or enter them on the spot. The items will be listed sequentially with the price and message you provided. Only Team Fortress 2 is supported."),
             button('Modify Presets', 'modify-quicklists')
+        ]),
+
+        section('rep.tf integration', [
+            buttons('Enabled', 'reptf', 'enabled', yesno(Prefs.enabled('reptf'))),
+            help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
         ]),
 
         section('Pricing', [

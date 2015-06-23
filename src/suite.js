@@ -21,6 +21,7 @@ Prefs
     .default('classifieds', 'signature', '')
     .default('classifieds', 'signature-buy', '')
     .default('classifieds', 'autoclose', true)
+    .default('classifieds', 'autofill', 'default')
     .default('homebg', 'image', '')
     .default('homebg', 'repeat', 'no-repeat')
     .default('homebg', 'posy', 'top')

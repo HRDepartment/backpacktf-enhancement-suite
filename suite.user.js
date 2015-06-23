@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.2.3
+// @version      1.3.0
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -42,6 +42,7 @@ Prefs
     .default('classifieds', 'signature', '')
     .default('classifieds', 'signature-buy', '')
     .default('classifieds', 'autoclose', true)
+    .default('classifieds', 'autofill', 'default')
     .default('homebg', 'image', '')
     .default('homebg', 'repeat', 'no-repeat')
     .default('homebg', 'posy', 'top')
@@ -497,6 +498,7 @@ var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
     API = require('../api'),
+    Pricing = require('../pricing'),
     MenuActions = require('../menu-actions'),
     Pricetags = require('./pricetags');
 
@@ -517,6 +519,85 @@ function addRemoveAllListings() {
             }());
         }
     });
+}
+
+function autofillLowest(clones, auto) {
+    var metal = $("#metal"),
+        keys = $("#keys"),
+        lowest;
+
+    clones.each(function () {
+        var val = this.dataset.listingPrice;
+
+        if (lowest) return;
+        if (this.dataset.listingIntent !== '1' || !val) return; // sellers only
+        if (auto && this.dataset.listingAutomatic !== "true") return;
+
+        val = val.split(', ');
+
+        if (val[0].indexOf('key') !== -1) {
+            lowest = {metal: parseFloat(val[1] || 0), keys: parseInt(val[0])};
+        } else {
+            lowest = {metal: parseFloat(val[0]), keys: 0};
+        }
+    });
+
+    if (lowest) {
+        metal.val(lowest.metal);
+        keys.val(lowest.keys);
+    }
+}
+
+function peekload(html) {
+    $("#peek-panel").append('<div class="panel-body padded" id="peek-panel-body"></div>');
+    var $ppb = $("#peek-panel-body"),
+        h = $.parseHTML(html),
+        buyers = [],
+        sellers = [],
+        autofill = Prefs.pref('classifieds', 'autofill'),
+        autofillEnabled = location.href.indexOf('/sell/') !== -1 &&
+            (autofill === 'lowest' || autofill === 'lowestauto'),
+        clones;
+
+    $('.item', h).each(function () {
+        var clone = this.cloneNode(true);
+        clone.classList.add('classifieds-clone');
+
+        if (clone.dataset.listingIntent === '0') {
+            buyers.push(clone);
+        } else if (clone.dataset.listingIntent === '1') {
+            sellers.push(clone);
+        }
+
+        if (autofillEnabled) {
+            clone.dataset.listingAutomatic = !!$(this).closest('.media.listing').find('.fa-flash').length;
+        }
+    });
+
+    if (sellers.length) {
+        $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers" class="row"></div>');
+        $("#classifieds-sellers").html(sellers);
+    }
+
+    if (buyers.length) {
+        $ppb.append('<h5>Buyers</h5><div id="classifieds-buyers" class="row"></div>');
+        $("#classifieds-buyers").html(buyers);
+    }
+
+    clones = $('.classifieds-clone');
+    if (clones.length) {
+        Page.addItemPopovers(clones, $ppb);
+
+        if (Pricetags.enabled()) {
+            Pricetags.setupInst(function () {
+                Pricetags.applyTagsToItems(clones);
+            });
+        }
+
+        if (autofillEnabled) {
+            autofillLowest(clones, autofill === 'lowestauto');
+        }
+    }
 }
 
 function peek(e) {
@@ -540,51 +621,12 @@ function peek(e) {
         method: "GET",
         url: url,
         dataType: "html"
-    }).success(function (html) {
-        $("#peak-panel").append('<div class="panel-body padded" id="peak-panel-body"></div>');
-        var $ppb = $("#peak-panel-body"),
-            h = $.parseHTML(html),
-            buyers = [],
-            sellers = [],
-            clones;
-
-        $('.item', h).each(function () {
-            var clone = this.cloneNode(true);
-            clone.classList.add('classifieds-clone');
-
-            if (clone.dataset.listingIntent === '0') {
-                buyers.push(clone);
-            } else if (clone.dataset.listingIntent === '1') {
-                sellers.push(clone);
-            }
-        });
-
-        if (sellers.length) {
-            $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers" class="row"></div>');
-            $("#classifieds-sellers").html(sellers);
-        }
-
-        if (buyers.length) {
-            $ppb.append('<h5>Buyers</h5><div id="classifieds-buyers" class="row"></div>');
-            $("#classifieds-buyers").html(buyers);
-        }
-
-        clones = $('.classifieds-clone');
-        if (clones.length) {
-            Page.addItemPopovers(clones, $ppb);
-
-            if (Pricetags.enabled()) {
-                Pricetags.setupInst(function () {
-                    Pricetags.applyTagsToItems(clones);
-                });
-            }
-        }
-    });
+    }).success(peekload);
 }
 
 function add(sig) {
     var htm =
-        '<div class="row"><div class="col-md-12 "><div class="panel panel-main" id="peak-panel">'+
+        '<div class="row"><div class="col-md-12 "><div class="panel panel-main" id="peek-panel">'+
         '<div class="panel-heading">Classifieds <span class="pull-right"><small><a href="#" id="classifieds-peek">Peek</a></small></span></div>'+
         '</div></div></div></div>';
     var signature = Prefs.pref('classifieds', sig),
@@ -599,12 +641,41 @@ function add(sig) {
     }
 }
 
+function addAutofill() {
+    var metal = $("#metal"),
+        keys = $("#keys"),
+        item = $('.item-singular .item'),
+        val = parseFloat(item.data('price'));
+
+    if (Prefs.pref('classifieds', 'autofill') !== 'backpack' || !val) return;
+    if (metal.val().length || keys.val().length) return;
+
+    Pricing.shared(function (ec) {
+        var m = {value: val, currency: 'metal'},
+            k = ec.convertToCurrency(m, 'keys');
+
+        if (k.value >= 1) {
+            m = ec.convertToCurrency({value: k.value % 1, currency: 'keys'}, 'metal');
+
+            k.value = Math.floor(k.value);
+            keys.val(parseInt(ec.formatCurrency(k), 10));
+        }
+
+        if (m.value > 0.08) {
+            ec.scope({step: EconCC.Enabled, currencies: {metal: {step: 0.11}}}, function () {
+                metal.val(parseFloat(ec.formatCurrency(m)));
+            });
+        }
+    });
+}
+
 function buy() {
     add('signature-buy');
 }
 
 function sell() {
     add('signature');
+    addAutofill();
 }
 
 function checkAutoclose() {
@@ -703,6 +774,7 @@ function global() {
 
 function load() {
     page('/classifieds/buy/:quality/:name/:tradable/:craftable/:priceindex?', buy);
+    page('/classifieds/relist/:bid', buy);
     page('/classifieds/sell/:id', sell);
     page('/classifieds/', checkAutoclose);
     global();
@@ -710,7 +782,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":15,"../page":16,"../preferences":17,"../script":19,"./pricetags":9}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":15,"../page":16,"../preferences":17,"../pricing":18,"../script":19,"./pricetags":9}],6:[function(require,module,exports){
 var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
@@ -1029,17 +1101,24 @@ function addTabContent() {
             help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
             buttons('Auto-close when listed successfully', 'classifieds', 'autoclose', yesno(Prefs.pref('classifieds', 'autoclose'))),
             help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
-        ]),
-
-        section('rep.tf integration', [
-            buttons('Enabled', 'reptf', 'enabled', yesno(Prefs.enabled('reptf'))),
-            help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
+            buttons('Auto-fill price', 'classifieds', 'autofill', choice([
+                {value: 'backpack', label: 'backpack.tf'},
+                {value: 'lowestauto', label: "Lowest automatic listing"},
+                {value: 'lowest', label: "Lowest listing"},
+                {value: 'default', label: 'Disabled'},
+            ], Prefs.pref('classifieds', 'autofill'))),
+            help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used manually. For those options, if there are no (automatic) listings, nothing will be auto-filled."),
         ]),
 
         section('Classifieds quicklisting', [
             buttons('Enabled', 'quicklist', 'enabled', yesno(Prefs.enabled('quicklist'))),
             help("Adds Select Page buttons to your profile. Once you have selected some items, click on the 'Quicklist selection' button. You can select a pre-defined price/message (click the button below) or enter them on the spot. The items will be listed sequentially with the price and message you provided. Only Team Fortress 2 is supported."),
             button('Modify Presets', 'modify-quicklists')
+        ]),
+
+        section('rep.tf integration', [
+            buttons('Enabled', 'reptf', 'enabled', yesno(Prefs.enabled('reptf'))),
+            help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
         ]),
 
         section('Pricing', [
