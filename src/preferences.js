@@ -33,6 +33,29 @@ exports.default = function (feat, name, value) {
     return this;
 };
 
+exports.defaults = function (defs) {
+    var feat, o, names, name, value;
+
+    for (feat in defs) {
+        names = defs[feat];
+        o = preferences.features[feat];
+
+        if (!o) o = preferences.features[feat] = {};
+
+        for (name in names) {
+            value = names[name];
+            
+            if (!o.hasOwnProperty(name)) {
+                o[name] = value;
+                exports.dirty = true;
+            }
+
+        }
+    }
+
+    return this;
+};
+
 exports.save = function () {
     if (!exports.dirty) return;
     localStorage.setItem("bes-preferences", JSON.stringify(preferences));

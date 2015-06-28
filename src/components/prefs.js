@@ -163,21 +163,9 @@ function addTabContent() {
                 {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
                 {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
             ], Prefs.pref('changes', 'period'))),
-        ]),
 
-        section('Recent price changes in backpacks', [
-            help("Only Team Fortress 2 is supported by this feature."),
-
-            buttons('Enabled', 'changes', 'enabled', yesno(Prefs.enabled('changes'))),
-            help("Shows recent price changes on backpack pages you visit."),
-
-            buttons('Price change period', 'changes', 'period', choice([
-                {value: (1000 * 60 * 60 * 8), label: '8 hours'},
-                {value: (1000 * 60 * 60 * 24), label: '1 day'},
-                {value: (1000 * 60 * 60 * 24 * 3), label: '3 days'},
-                {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
-                {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
-            ], Prefs.pref('changes', 'period'))),
+            buttons('Outdated unusual warnings', 'changes', 'outdatedwarn', yesno(Prefs.pref('changes', 'outdatedwarn'))),
+            help("Shows an warning icon on outdated unusuals (ones that were updated more than 3 months ago.) Price changes must be enabled for this feature."),
         ]),
 
         section('Custom homepage background', [

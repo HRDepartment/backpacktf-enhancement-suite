@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.0.1
+// @version      1.3.1
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -28,29 +28,42 @@ if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefin
 Page.init();
 require('./api').init();
 
-Prefs
-    .default('reptf', 'enabled', true)
-    .default('quicklist', 'enabled', false)
-    .default('pricetags', 'modmult', 0.5)
-    .default('pricetags', 'tooltips', true)
-    .default('changes', 'enabled', true)
-    .default('changes', 'period', (1000 * 60 * 60 * 24)) // 1 day
-    .default('pricing', 'step', EconCC.Disabled)
-    .default('pricing', 'range', EconCC.Range.Mid)
-    .default('lotto', 'show', true)
-    .default('notifications', 'updatecount', 'click')
-    .default('classifieds', 'signature', '')
-    .default('classifieds', 'signature-buy', '')
-    .default('classifieds', 'autoclose', true)
-    .default('classifieds', 'autofill', 'default')
-    .default('homebg', 'image', '')
-    .default('homebg', 'repeat', 'no-repeat')
-    .default('homebg', 'posy', 'top')
-    .default('homebg', 'posx', 'center')
-    .default('homebg', 'attachment', 'scroll')
-    .default('homebg', 'sizing', 'contain')
-    .default('other', 'originalkeys', false)
-;
+Prefs.defaults({
+    reptf: {enabled: true},
+    quicklist: {enabled: false},
+    lotto: {show: true},
+    notifications: {updatecount: 'click'},
+    pricetags: {
+        modmult: 0.5,
+        tooltips: true,
+    },
+    changes: {
+        enabled: true,
+        outdatedwarn: true,
+        period: 1000 * 60 * 60 * 24 // 1d
+    },
+    pricing: {
+        step: EconCC.Disabled,
+        range: EconCC.Range.Mid
+    },
+    classifieds: {
+        signature: '',
+        'signature-buy': '',
+        autoclose: true,
+        autofill: 'default'
+    },
+    homebg: {
+        image: '',
+        repeat: 'no-repeat',
+        posy: 'top',
+        posx: 'center',
+        attachment: 'scroll',
+        sizing: 'contain'
+    },
+    other: {
+        originalkeys: false
+    }
+});
 
 function exec(mod) {
     mod();
@@ -361,7 +374,6 @@ var Prefs = require('../preferences'),
 
 var period = Prefs.pref('changes', 'period'), // ms
     now = moment(),
-    changes = [],
     ec;
 
 function priceInPeriod(price) {
@@ -369,38 +381,121 @@ function priceInPeriod(price) {
     return now.diff(mom) <= period;
 }
 
-function applyArrows() {
-    // TODO: cleverness regarding DI
-    changes.forEach(function (change) {
-        var elem = change[0],
-            price = change[1],
-            stack = elem.find('.icon-stack'),
-            value = {low: Math.abs(price.difference), currency: 'metal'},
-            mode = EconCC.Mode.Label,
-            diff, icon;
+function priceOutdated(price) {
+    return now.diff(moment.unix(price.last_update), 'months', true) >= 3;
+}
+
+function applyArrows(changes) {
+    var mode = EconCC.Mode.Label,
+        hash, o, price, elems, od,
+        value, diff, icon, html;
+
+    function addIcon(el) {
+        var elem = $(el),
+            stack = elem.find('.icon-stack');
 
         if (!stack.length) {
             elem.append('<div class="icon-stack"></div>');
             stack = elem.find('.icon-stack');
         }
 
-        if (price.difference === 0) {
-            icon = "fa fa-yellow fa-retweet";
-            diff = 'Refreshed';
-        } else if (price.difference > 0) {
-            icon = "fa fa-green fa-arrow-up";
-            diff = 'Up ' + ec.format(value, mode);
-        } else if (price.difference < 0) {
-            icon = "fa fa-red fa-arrow-down";
-            diff = 'Down ' + ec.format(value, mode);
+        stack.append(html);
+    }
+
+    for (hash in changes) {
+        o = changes[hash];
+        price = o.price;
+        elems = o.elements;
+        od = o.hasOwnProperty("outdated");
+
+        html = "";
+
+        if (o.change !== false) {
+            value = {low: Math.abs(price.difference), currency: 'metal'};
+
+            if (price.last_update === 0) {
+                icon = "fa fa-certificate";
+                diff = 'Newly priced';
+            } else if (price.difference === 0) {
+                icon = "fa fa-yellow fa-retweet";
+                diff = 'Refreshed';
+            } else if (price.difference > 0) {
+                icon = "fa fa-green fa-arrow-up";
+                diff = 'Up ' + ec.format(value, mode);
+            } else if (price.difference < 0) {
+                icon = "fa fa-red fa-arrow-down";
+                diff = 'Down ' + ec.format(value, mode);
+            }
+
+            diff += ' ' + moment.unix(price.last_update).from(now);
+            html += "<div class='arrow-icon'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>";
         }
 
-        diff += ' ' + moment.unix(price.last_update).from(now);
+        if (od) {
+            html += "<div class='arrow-icon'><i class='fa fa-warning fa-red od-tooltip' title='Last updated " + moment.unix(price.last_update).from(now) + "'></i></div>";
+        }
 
-        stack.append("<div class='price-arrow'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>");
+        if (html.length) elems.forEach(addIcon);
+    }
+
+    Page.addTooltips($('.change-tooltip, .od-tooltip'));
+}
+
+function applyChanges(pricelist) {
+    var items = $('.item:not(.spacer)'),
+        warn = Prefs.pref('changes', 'outdatedwarn'),
+        cache = {},
+        changes = {};
+
+    items.each(function () {
+        var item = pricelist.items[this.dataset.name],
+            quality = +this.dataset.quality,
+            tradable = this.dataset.tradable === "1",
+            craftable = this.dataset.craftable === "1",
+            series = this.dataset.crate || this.dataset.priceindex,
+            price, hash, od;
+
+        if (!item) return;
+        hash = this.dataset.defindex + "-" + quality + "-" + tradable + "-" + craftable + (series ? "-" + series : "");
+
+
+        if (cache[hash] === true) {
+            changes[hash].elements.push(this);
+            return;
+        } else if (cache[hash] === false) return;
+
+        price = item.prices[quality];
+        if (!price) return;
+        price = price[tradable ? "Tradable" : "Non-Tradable"];
+        if (!price) return;
+        price = price[craftable ? "Craftable" : "Non-Craftable"];
+        if (!price) return;
+        
+        if (series) {
+            price = price[series];
+            if (!price) return;
+
+            od = warn && quality === 5 && priceOutdated(price);
+            if (priceInPeriod(price)) {
+                cache[hash] = true;
+                changes[hash] = {price: price, elements: [this]};
+                if (od) changes[hash].outdated = true;
+            } else {
+                if (od) changes[hash] = {price: price, elements: [this], change: false, outdated: true};
+                cache[hash] = od;
+            }
+        } else {
+            price = price[0];
+            if (priceInPeriod(price)) {
+                cache[hash] = true;
+                changes[hash] = {price: price, elements: [this]};
+            } else {
+                cache[hash] = false;
+            }
+        }
     });
 
-    Page.addTooltips($('.change-tooltip'));
+    applyArrows(changes);
 }
 
 function onMenuActionClick() {
@@ -447,36 +542,6 @@ function addMenuAction() {
     });
 }
 
-function findChanges(pricelist) {
-    $('.item:not(.spacer)').each(function () {
-        var $this = $(this),
-            item = pricelist.items[$this.data('name')],
-            price, series;
-
-        if (!item) return;
-        price = item.prices[+($this.data('quality'))];
-        if (!price) return;
-        price = price[$this.data('tradable') ? "Tradable" : "Non-Tradable"];
-        if (!price) return;
-        price = price[$this.data('craftable') ? "Craftable" : "Non-Craftable"];
-        if (!price) return;
-
-        if (price[0]) {
-            price = price[0];
-            if (priceInPeriod(price)) {
-                changes.push([$this, price]);
-            }
-        } else {
-            if ((series = $this.data('crate')) || (series = $this.data('priceindex'))) {
-                price = price[series];
-                if (price && priceInPeriod(price)) {
-                    changes.push([$this, price]);
-                }
-            }
-        }
-    });
-}
-
 function load() {
     if (Page.appid() !== 440) return; // Sorry Dota
     if (!Page.isBackpack()) return;
@@ -484,9 +549,8 @@ function load() {
     API.IGetPrices(function (pricelist) {
         Pricing.shared(function (inst) {
             ec = inst;
-            findChanges(pricelist);
-            applyArrows();
             addMenuAction();
+            applyChanges(pricelist);
         });
     });
 }
@@ -1173,21 +1237,9 @@ function addTabContent() {
                 {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
                 {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
             ], Prefs.pref('changes', 'period'))),
-        ]),
 
-        section('Recent price changes in backpacks', [
-            help("Only Team Fortress 2 is supported by this feature."),
-
-            buttons('Enabled', 'changes', 'enabled', yesno(Prefs.enabled('changes'))),
-            help("Shows recent price changes on backpack pages you visit."),
-
-            buttons('Price change period', 'changes', 'period', choice([
-                {value: (1000 * 60 * 60 * 8), label: '8 hours'},
-                {value: (1000 * 60 * 60 * 24), label: '1 day'},
-                {value: (1000 * 60 * 60 * 24 * 3), label: '3 days'},
-                {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
-                {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
-            ], Prefs.pref('changes', 'period'))),
+            buttons('Outdated unusual warnings', 'changes', 'outdatedwarn', yesno(Prefs.pref('changes', 'outdatedwarn'))),
+            help("Shows an warning icon on outdated unusuals (ones that were updated more than 3 months ago.) Price changes must be enabled for this feature."),
         ]),
 
         section('Custom homepage background', [
@@ -2672,6 +2724,29 @@ exports.default = function (feat, name, value) {
     if (!o.hasOwnProperty(name)) {
         o[name] = value;
         exports.dirty = true;
+    }
+
+    return this;
+};
+
+exports.defaults = function (defs) {
+    var feat, o, names, name, value;
+
+    for (feat in defs) {
+        names = defs[feat];
+        o = preferences.features[feat];
+
+        if (!o) o = preferences.features[feat] = {};
+
+        for (name in names) {
+            value = names[name];
+            
+            if (!o.hasOwnProperty(name)) {
+                o[name] = value;
+                exports.dirty = true;
+            }
+
+        }
     }
 
     return this;

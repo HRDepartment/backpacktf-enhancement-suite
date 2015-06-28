@@ -6,7 +6,6 @@ var Prefs = require('../preferences'),
 
 var period = Prefs.pref('changes', 'period'), // ms
     now = moment(),
-    changes = [],
     ec;
 
 function priceInPeriod(price) {
@@ -14,38 +13,121 @@ function priceInPeriod(price) {
     return now.diff(mom) <= period;
 }
 
-function applyArrows() {
-    // TODO: cleverness regarding DI
-    changes.forEach(function (change) {
-        var elem = change[0],
-            price = change[1],
-            stack = elem.find('.icon-stack'),
-            value = {low: Math.abs(price.difference), currency: 'metal'},
-            mode = EconCC.Mode.Label,
-            diff, icon;
+function priceOutdated(price) {
+    return now.diff(moment.unix(price.last_update), 'months', true) >= 3;
+}
+
+function applyArrows(changes) {
+    var mode = EconCC.Mode.Label,
+        hash, o, price, elems, od,
+        value, diff, icon, html;
+
+    function addIcon(el) {
+        var elem = $(el),
+            stack = elem.find('.icon-stack');
 
         if (!stack.length) {
             elem.append('<div class="icon-stack"></div>');
             stack = elem.find('.icon-stack');
         }
 
-        if (price.difference === 0) {
-            icon = "fa fa-yellow fa-retweet";
-            diff = 'Refreshed';
-        } else if (price.difference > 0) {
-            icon = "fa fa-green fa-arrow-up";
-            diff = 'Up ' + ec.format(value, mode);
-        } else if (price.difference < 0) {
-            icon = "fa fa-red fa-arrow-down";
-            diff = 'Down ' + ec.format(value, mode);
+        stack.append(html);
+    }
+
+    for (hash in changes) {
+        o = changes[hash];
+        price = o.price;
+        elems = o.elements;
+        od = o.hasOwnProperty("outdated");
+
+        html = "";
+
+        if (o.change !== false) {
+            value = {low: Math.abs(price.difference), currency: 'metal'};
+
+            if (price.last_update === 0) {
+                icon = "fa fa-certificate";
+                diff = 'Newly priced';
+            } else if (price.difference === 0) {
+                icon = "fa fa-yellow fa-retweet";
+                diff = 'Refreshed';
+            } else if (price.difference > 0) {
+                icon = "fa fa-green fa-arrow-up";
+                diff = 'Up ' + ec.format(value, mode);
+            } else if (price.difference < 0) {
+                icon = "fa fa-red fa-arrow-down";
+                diff = 'Down ' + ec.format(value, mode);
+            }
+
+            diff += ' ' + moment.unix(price.last_update).from(now);
+            html += "<div class='arrow-icon'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>";
         }
 
-        diff += ' ' + moment.unix(price.last_update).from(now);
+        if (od) {
+            html += "<div class='arrow-icon'><i class='fa fa-warning fa-red od-tooltip' title='Last updated " + moment.unix(price.last_update).from(now) + "'></i></div>";
+        }
 
-        stack.append("<div class='price-arrow'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>");
+        if (html.length) elems.forEach(addIcon);
+    }
+
+    Page.addTooltips($('.change-tooltip, .od-tooltip'));
+}
+
+function applyChanges(pricelist) {
+    var items = $('.item:not(.spacer)'),
+        warn = Prefs.pref('changes', 'outdatedwarn'),
+        cache = {},
+        changes = {};
+
+    items.each(function () {
+        var item = pricelist.items[this.dataset.name],
+            quality = +this.dataset.quality,
+            tradable = this.dataset.tradable === "1",
+            craftable = this.dataset.craftable === "1",
+            series = this.dataset.crate || this.dataset.priceindex,
+            price, hash, od;
+
+        if (!item) return;
+        hash = this.dataset.defindex + "-" + quality + "-" + tradable + "-" + craftable + (series ? "-" + series : "");
+
+
+        if (cache[hash] === true) {
+            changes[hash].elements.push(this);
+            return;
+        } else if (cache[hash] === false) return;
+
+        price = item.prices[quality];
+        if (!price) return;
+        price = price[tradable ? "Tradable" : "Non-Tradable"];
+        if (!price) return;
+        price = price[craftable ? "Craftable" : "Non-Craftable"];
+        if (!price) return;
+        
+        if (series) {
+            price = price[series];
+            if (!price) return;
+
+            od = warn && quality === 5 && priceOutdated(price);
+            if (priceInPeriod(price)) {
+                cache[hash] = true;
+                changes[hash] = {price: price, elements: [this]};
+                if (od) changes[hash].outdated = true;
+            } else {
+                if (od) changes[hash] = {price: price, elements: [this], change: false, outdated: true};
+                cache[hash] = od;
+            }
+        } else {
+            price = price[0];
+            if (priceInPeriod(price)) {
+                cache[hash] = true;
+                changes[hash] = {price: price, elements: [this]};
+            } else {
+                cache[hash] = false;
+            }
+        }
     });
 
-    Page.addTooltips($('.change-tooltip'));
+    applyArrows(changes);
 }
 
 function onMenuActionClick() {
@@ -92,36 +174,6 @@ function addMenuAction() {
     });
 }
 
-function findChanges(pricelist) {
-    $('.item:not(.spacer)').each(function () {
-        var $this = $(this),
-            item = pricelist.items[$this.data('name')],
-            price, series;
-
-        if (!item) return;
-        price = item.prices[+($this.data('quality'))];
-        if (!price) return;
-        price = price[$this.data('tradable') ? "Tradable" : "Non-Tradable"];
-        if (!price) return;
-        price = price[$this.data('craftable') ? "Craftable" : "Non-Craftable"];
-        if (!price) return;
-
-        if (price[0]) {
-            price = price[0];
-            if (priceInPeriod(price)) {
-                changes.push([$this, price]);
-            }
-        } else {
-            if ((series = $this.data('crate')) || (series = $this.data('priceindex'))) {
-                price = price[series];
-                if (price && priceInPeriod(price)) {
-                    changes.push([$this, price]);
-                }
-            }
-        }
-    });
-}
-
 function load() {
     if (Page.appid() !== 440) return; // Sorry Dota
     if (!Page.isBackpack()) return;
@@ -129,9 +181,8 @@ function load() {
     API.IGetPrices(function (pricelist) {
         Pricing.shared(function (inst) {
             ec = inst;
-            findChanges(pricelist);
-            applyArrows();
             addMenuAction();
+            applyChanges(pricelist);
         });
     });
 }

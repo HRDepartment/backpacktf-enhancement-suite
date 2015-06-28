@@ -7,29 +7,42 @@ if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefin
 Page.init();
 require('./api').init();
 
-Prefs
-    .default('reptf', 'enabled', true)
-    .default('quicklist', 'enabled', false)
-    .default('pricetags', 'modmult', 0.5)
-    .default('pricetags', 'tooltips', true)
-    .default('changes', 'enabled', true)
-    .default('changes', 'period', (1000 * 60 * 60 * 24)) // 1 day
-    .default('pricing', 'step', EconCC.Disabled)
-    .default('pricing', 'range', EconCC.Range.Mid)
-    .default('lotto', 'show', true)
-    .default('notifications', 'updatecount', 'click')
-    .default('classifieds', 'signature', '')
-    .default('classifieds', 'signature-buy', '')
-    .default('classifieds', 'autoclose', true)
-    .default('classifieds', 'autofill', 'default')
-    .default('homebg', 'image', '')
-    .default('homebg', 'repeat', 'no-repeat')
-    .default('homebg', 'posy', 'top')
-    .default('homebg', 'posx', 'center')
-    .default('homebg', 'attachment', 'scroll')
-    .default('homebg', 'sizing', 'contain')
-    .default('other', 'originalkeys', false)
-;
+Prefs.defaults({
+    reptf: {enabled: true},
+    quicklist: {enabled: false},
+    lotto: {show: true},
+    notifications: {updatecount: 'click'},
+    pricetags: {
+        modmult: 0.5,
+        tooltips: true,
+    },
+    changes: {
+        enabled: true,
+        outdatedwarn: true,
+        period: 1000 * 60 * 60 * 24 // 1d
+    },
+    pricing: {
+        step: EconCC.Disabled,
+        range: EconCC.Range.Mid
+    },
+    classifieds: {
+        signature: '',
+        'signature-buy': '',
+        autoclose: true,
+        autofill: 'default'
+    },
+    homebg: {
+        image: '',
+        repeat: 'no-repeat',
+        posy: 'top',
+        posx: 'center',
+        attachment: 'scroll',
+        sizing: 'contain'
+    },
+    other: {
+        originalkeys: false
+    }
+});
 
 function exec(mod) {
     mod();
