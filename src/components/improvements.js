@@ -1,5 +1,6 @@
 var Prefs = require('../preferences'),
     Script = require('../script'),
+    Pricing = require('../pricing'),
     Page = require('../page');
 
 function addMorePopovers(more) {
@@ -36,6 +37,20 @@ function addMorePopovers(more) {
     });
 }
 
+function backpackHandler() {
+    var refvalue = $("#refinedvalue");
+
+    if (!refvalue.length) return;
+
+    Pricing.shared(function (ec) {
+        refvalue.tooltip({
+            title: function () {
+                return ec.format({value: +refvalue.text().replace(/,/g, ''), currency: 'metal'}, EconCC.Mode.Long);
+            }
+        });
+    });
+}
+
 function global() {
     var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -44,6 +59,19 @@ function global() {
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
+
+    $('.navbar-game-select li a').click(function (e) {
+        var appid = +this.href.replace(/\D/g, "");
+
+        e.preventDefault();
+        if (appid === 440) {
+            location.hostname = "backpack.tf";
+        } else if (appid === 570) {
+            location.hostname = "dota2.backpack.tf";
+        } else if (appid === 730) {
+            location.hostname = "csgo.backpack.tf";
+        } else window.location = this.href; // fallback
+     });
 
     if (Prefs.pref('other', 'originalkeys')) {
         $('[data-converted-from]').each(function () {
@@ -54,6 +82,8 @@ function global() {
             output.remove();
         });
     }
+
+    if (Page.isBackpack()) backpackHandler();
 }
 
 function applyWallpaper() {

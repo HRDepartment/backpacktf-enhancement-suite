@@ -60,7 +60,7 @@ function applyArrows(changes) {
             }
 
             diff += ' ' + moment.unix(price.last_update).from(now);
-            html += "<div class='arrow-icon'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>";
+            html += "<div class='arrow-icon changes-price-arrow'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>";
         }
 
         if (od) {
@@ -102,7 +102,7 @@ function applyChanges(pricelist) {
         if (!price) return;
         price = price[craftable ? "Craftable" : "Non-Craftable"];
         if (!price) return;
-        
+
         if (series) {
             price = price[series];
             if (!price) return;
@@ -137,8 +137,8 @@ function onMenuActionClick() {
         container = $("<div>"),
         d, clones, elems;
 
-    elems = $('.price-arrow').parent().parent().filter(function () {
-        var di = $(this).attr('data-defindex');
+    elems = $('.changes-price-arrow').parent().parent().filter(function () {
+        var di = this.dataset.defindex;
         if (!dis.hasOwnProperty(di)) {
             return (dis[di] = true);
         }

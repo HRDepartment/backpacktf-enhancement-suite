@@ -1,3 +1,8 @@
+### v1.3.2
+Recent Price Changes bugfix.
+Improved cross site navigation (clicking on the game-specific backpack sites in the navbar maintains the path.)
+Currency conversion tooltip added to backpack "REFINED" label.
+
 ### v1.3.1
 Outdated unusual warnings pref.
 

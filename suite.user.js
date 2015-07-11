@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.1
+// @version      1.3.2
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -428,7 +428,7 @@ function applyArrows(changes) {
             }
 
             diff += ' ' + moment.unix(price.last_update).from(now);
-            html += "<div class='arrow-icon'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>";
+            html += "<div class='arrow-icon changes-price-arrow'><i class='" + icon + " change-tooltip' title='" + diff + "'></i></div>";
         }
 
         if (od) {
@@ -470,7 +470,7 @@ function applyChanges(pricelist) {
         if (!price) return;
         price = price[craftable ? "Craftable" : "Non-Craftable"];
         if (!price) return;
-        
+
         if (series) {
             price = price[series];
             if (!price) return;
@@ -505,8 +505,8 @@ function onMenuActionClick() {
         container = $("<div>"),
         d, clones, elems;
 
-    elems = $('.price-arrow').parent().parent().filter(function () {
-        var di = $(this).attr('data-defindex');
+    elems = $('.changes-price-arrow').parent().parent().filter(function () {
+        var di = this.dataset.defindex;
         if (!dis.hasOwnProperty(di)) {
             return (dis[di] = true);
         }
@@ -961,6 +961,7 @@ module.exports = load;
 },{"../menu-actions":15,"../page":16,"../script":19}],7:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Script = require('../script'),
+    Pricing = require('../pricing'),
     Page = require('../page');
 
 function addMorePopovers(more) {
@@ -997,6 +998,20 @@ function addMorePopovers(more) {
     });
 }
 
+function backpackHandler() {
+    var refvalue = $("#refinedvalue");
+
+    if (!refvalue.length) return;
+
+    Pricing.shared(function (ec) {
+        refvalue.tooltip({
+            title: function () {
+                return ec.format({value: +refvalue.text().replace(/,/g, ''), currency: 'metal'}, EconCC.Mode.Long);
+            }
+        });
+    });
+}
+
 function global() {
     var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -1005,6 +1020,19 @@ function global() {
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
+
+    $('.navbar-game-select li a').click(function (e) {
+        var appid = +this.href.replace(/\D/g, "");
+
+        e.preventDefault();
+        if (appid === 440) {
+            location.hostname = "backpack.tf";
+        } else if (appid === 570) {
+            location.hostname = "dota2.backpack.tf";
+        } else if (appid === 730) {
+            location.hostname = "csgo.backpack.tf";
+        } else window.location = this.href; // fallback
+     });
 
     if (Prefs.pref('other', 'originalkeys')) {
         $('[data-converted-from]').each(function () {
@@ -1015,6 +1043,8 @@ function global() {
             output.remove();
         });
     }
+
+    if (Page.isBackpack()) backpackHandler();
 }
 
 function applyWallpaper() {
@@ -1071,7 +1101,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":16,"../preferences":17,"../script":19}],8:[function(require,module,exports){
+},{"../page":16,"../preferences":17,"../pricing":18,"../script":19}],8:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
