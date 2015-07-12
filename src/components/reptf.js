@@ -167,7 +167,6 @@ function showBans(json) {
 
     addRepTooltips();
     $('#showrep').css('color', reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E');
-    //if (bans.length) $('body').append('<iframe src="https://youtube.com/embed/VlszRjKJqbA?autoplay=1&start=8&end=35" style="display:none;"></iframe>');
 }
 
 function load() {

@@ -91,8 +91,7 @@ function load() {
 
     addButtonTooltips();
     addButtonListeners();
-    page('/classifieds/', addRallHeader);
-    //page('/stats/:quality/:name/:tradable/:craftable/:priceindex?', addRallHeader(true));
+    if (location.pathname === '/classifieds' || location.pathname === '/classifieds/') addRallHeader();
     addMenuAction();
 }
 

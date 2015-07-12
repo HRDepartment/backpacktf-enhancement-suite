@@ -175,8 +175,7 @@ function addMenuAction() {
 }
 
 function load() {
-    if (Page.appid() !== 440) return; // Sorry Dota
-    if (!Page.isBackpack()) return;
+    if (!Page.isBackpack() || Page.appid() !== 440) return;
 
     API.IGetPrices(function (pricelist) {
         Pricing.shared(function (inst) {

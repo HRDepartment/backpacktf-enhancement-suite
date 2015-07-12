@@ -1,6 +1,7 @@
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
+    DataStore = require('../datastore'),
     Cache = require('../cache');
 
 function addTab() {
@@ -59,6 +60,19 @@ function addTabContent() {
         ].join("");
     }
 
+
+    function buttonsyn(name, component, key) {
+        return buttons(name, component, key, yesno(Prefs.pref(component, key)));
+    }
+
+    function userInputp(label, component, key, placeholder) {
+        return userInput(label, component, key, Prefs.pref(component, key), placeholder);
+    }
+
+    function buttonsChoice(name, component, key, choices) {
+        return buttons(name, component, key, choice(choices, Prefs.pref(component, key)));
+    }
+
     function choice(choices, active) {
         var html = "";
 
@@ -79,62 +93,62 @@ function addTabContent() {
         '<h3>backpack.tf Enhancement Suite <span class="text-muted">v' + Page.SUITE_VERSION + '</span></h3>',
         '<div class="padded">',
 
-        buttons('Notifications widget', 'notifications', 'updatecount', choice([
+        buttonsChoice('Notifications widget', 'notifications', 'updatecount', [
             {value: 'no', label: 'No'},
             {value: 'click', label: 'Notification click'},
             {value: 'listing', label: 'Removed listing'},
             {value: 'load', label: 'Always'},
-        ], Prefs.pref('notifications', 'updatecount'))),
+        ]),
         help("Requires you to have donated and disabled ads in favor of the notifications widget (Awesome perks tab). This setting applies only to the notifications widget which is on the site index page. Updates the notifications count badge when a notification is clicked, when you have a [removed listing] notification, or always."),
 
         section('Classifieds', [
-            userInput('Sell order signature', 'classifieds', 'signature', Prefs.pref('classifieds', 'signature')),
+            userInputp('Sell order signature', 'classifieds', 'signature'),
             help("Message automatically inserted in the 'Message' field of Classified sell order listings you create manually."),
-            userInput('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
+            userInputp('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
             help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
-            buttons('Auto-close when listed successfully', 'classifieds', 'autoclose', yesno(Prefs.pref('classifieds', 'autoclose'))),
+            buttonsyn('Auto-close when listed successfully', 'classifieds', 'autoclose'),
             help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
-            buttons('Auto-fill price', 'classifieds', 'autofill', choice([
+            buttonsChoice('Auto-fill price', 'classifieds', 'autofill', [
                 {value: 'backpack', label: 'backpack.tf'},
                 {value: 'lowestauto', label: "Lowest automatic listing"},
                 {value: 'lowest', label: "Lowest listing"},
                 {value: 'default', label: 'Disabled'},
-            ], Prefs.pref('classifieds', 'autofill'))),
+            ]),
             help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used manually. For those options, if there are no (automatic) listings, nothing will be auto-filled."),
         ]),
 
         section('Classifieds quicklisting', [
-            buttons('Enabled', 'quicklist', 'enabled', yesno(Prefs.enabled('quicklist'))),
+            buttonsyn('Enabled', 'quicklist', 'enabled'),
             help("Adds Select Page buttons to your profile. Once you have selected some items, click on the 'Quicklist selection' button. You can select a pre-defined price/message (click the button below) or enter them on the spot. The items will be listed sequentially with the price and message you provided. Only Team Fortress 2 is supported."),
             button('Modify Presets', 'modify-quicklists')
         ]),
 
         section('rep.tf integration', [
-            buttons('Enabled', 'reptf', 'enabled', yesno(Prefs.enabled('reptf'))),
+            buttonsyn('Enabled', 'reptf', 'enabled'),
             help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
         ]),
 
         section('Pricing', [
             help("These options are used by Pricetags and Recent price changes in backpacks."),
 
-            buttons('Price range', 'pricing', 'range', choice([
+            buttonsChoice('Price range', 'pricing', 'range', [
                 {value: EconCC.Range.Low, label: 'Low-end'},
                 {value: EconCC.Range.Mid, label: 'Mid (avg)'},
                 {value: EconCC.Range.High, label: 'High-end'},
-            ], Prefs.pref('pricing', 'range'))),
+            ]),
             help("Price range to be used."),
 
-            buttons('Currency step', 'pricing', 'step', choice([
+            buttonsChoice('Currency step', 'pricing', 'step', [
                 {value: EconCC.Enabled, label: 'Enabled'},
                 {value: EconCC.Disabled, label: 'Disabled'}
-            ], Prefs.pref('pricing', 'step'))),
+            ]),
             help("Whether currency values should be 'prettified'. Metal is rounded to the nearest weapon (except when the value is less than one), and keys are rounded to the nearest 20th. (1.40 ref -> 1.38, 2.27 keys -> 2.25 keys)"),
         ]),
 
         section('Pricetags', [
             help("This section requires your 'Item pricetags' (Team Fortress 2 tab) to be 'Game currency'. Only Team Fortress 2 is supported obviously."),
 
-            buttons('Value item modifications at', 'pricetags', 'modmult', choice([
+            buttonsChoice('Value item modifications at', 'pricetags', 'modmult', [
                 {value: 0, label: '0%'},
                 {value: 0.05, label: '5%'},
                 {value: 0.1, label: '10%'},
@@ -143,73 +157,74 @@ function addTabContent() {
                 {value: 0.3, label: '30%'},
                 {value: 0.4, label: '40%'},
                 {value: 0.5, label: '50%'}
-            ], Prefs.pref('pricetags', 'modmult'))),
+            ]),
             help("Strange Parts, Paint."),
 
-            buttons('Tooltips', 'pricetags', 'tooltips', yesno(Prefs.pref('pricetags', 'tooltips'))),
+            buttonsyn('Tooltips', 'pricetags', 'tooltips'),
             help("Adds tooltips to items that are priced in keys."),
         ]),
 
         section('Recent price changes in backpacks', [
-            help("Only Team Fortress 2 is supported by this feature."),
-
-            buttons('Enabled', 'changes', 'enabled', yesno(Prefs.enabled('changes'))),
+            buttonsyn('Enabled', 'changes', 'enabled'),
             help("Shows recent price changes on backpack pages you visit."),
 
-            buttons('Price change period', 'changes', 'period', choice([
+            buttonsChoice('Price change period', 'changes', 'period', [
                 {value: (1000 * 60 * 60 * 8), label: '8 hours'},
                 {value: (1000 * 60 * 60 * 24), label: '1 day'},
                 {value: (1000 * 60 * 60 * 24 * 3), label: '3 days'},
                 {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
                 {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
-            ], Prefs.pref('changes', 'period'))),
+            ]),
 
-            buttons('Outdated unusual warnings', 'changes', 'outdatedwarn', yesno(Prefs.pref('changes', 'outdatedwarn'))),
+            buttonsyn('Outdated unusual warnings', 'changes', 'outdatedwarn'),
             help("Shows an warning icon on outdated unusuals (ones that were updated more than 3 months ago.) Price changes must be enabled for this feature."),
         ]),
 
         section('Custom homepage background', [
-            userInput('Background image url', 'homebg', 'image', Prefs.pref('homebg', 'image')),
-            help("Leave blank to disable this feature."),
+            userInputp('Background image url', 'homebg', 'image'),
+            help("Leave blank to disable this feature. You can also link to a raw pastebin so an image can be chosen at random <a href='http://pastebin.com/raw.php?i=8CVW6S2z'>(example)</a>. Separate image urls with a newline. Images will share the same options so pick similar ones."),
 
-            buttons('Background repeat', 'homebg', 'repeat', choice([
+            buttonsChoice('Background repeat', 'homebg', 'repeat', [
                 {value: 'no-repeat', label: "Don't repeat"},
                 {value: 'repeat', label: "Tiled"},
                 {value: 'repeat-x', label: 'Repeat horizontally'},
                 {value: 'repeat-y', label: 'Repeat veritcally'},
-            ], Prefs.pref('homebg', 'repeat'))),
+            ]),
 
-            buttons('Background veritcal position', 'homebg', 'posy', choice([
+            buttonsChoice('Background veritcal position', 'homebg', 'posy', [
                 {value: 'top', label: "Top"},
                 {value: 'center', label: "Center"},
                 {value: 'bottom', label: "Bottom"},
-            ], Prefs.pref('homebg', 'posy'))),
+            ]),
 
-            buttons('Background horizontal position', 'homebg', 'posx', choice([
+            buttonsChoice('Background horizontal position', 'homebg', 'posx', [
                 {value: 'left', label: "Left"},
                 {value: 'center', label: "Center"},
                 {value: 'right', label: "Right"},
-            ], Prefs.pref('homebg', 'posx'))),
+            ]),
 
-            buttons('Background attachment', 'homebg', 'attachment', choice([
+            buttonsChoice('Background attachment', 'homebg', 'attachment', [
                 {value: 'scroll', label: "Scroll with page"},
                 {value: 'fixed', label: "Fixed"},
-            ], Prefs.pref('homebg', 'attachment'))),
+            ]),
 
-            buttons('Background sizing', 'homebg', 'sizing', choice([
+            buttonsChoice('Background sizing', 'homebg', 'sizing', [
                 {value: 'none', label: "None"},
                 {value: 'cover', label: "Fill"},
                 {value: 'contain', label: "Contain"},
-            ], Prefs.pref('homebg', 'sizing'))),
+            ]),
+
+            buttonsyn('Replace all walls', 'homebg', 'replacewalls'),
+            help("Replaces the default wall image with your background image url."),
         ]),
 
         section('Other', [
             help("Preferences that don't deserve their own section."),
 
-            buttons('Show lotto', 'lotto', 'show', yesno(Prefs.pref('lotto', 'show'))),
+            buttonsyn('Show lotto', 'lotto', 'show'),
             help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
 
-            buttons('Use original key icons', 'other', 'originalkeys', yesno(Prefs.pref('other', 'originalkeys'))),
+            buttonsyn('Use original key icons', 'other', 'originalkeys'),
             help("Shows the original key's icon (for converted event keys) full size.")
         ]),
 
@@ -246,16 +261,16 @@ function addTabContent() {
 
 function clearCache() {
     Cache.names.forEach(function (name) {
-        localStorage.removeItem(name);
+        DataStore.removeItem(name);
     });
 
-    localStorage.removeItem("backpackapikey");
+    DataStore.removeItem("backpackapikey");
     location.reload();
 }
 
 function resetPrefs() {
-    localStorage.removeItem("bes-preferences");
-    localStorage.removeItem("bes-quicklists");
+    DataStore.removeItem("bes-preferences");
+    DataStore.removeItem("bes-quicklists");
     location.reload();
 }
 

@@ -1,5 +1,6 @@
 var Page = require('../page'),
     Script = require('../script'),
+    DataStore = require('../datastore'),
     Prefs = require('../preferences');
 
 var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short":{"keys":["k","k"],"metal":["r","r"]}},
@@ -11,13 +12,13 @@ var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short
     values;
 
 function loadQuicklists() {
-    var customlists = localStorage.getItem("bes-quicklists");
+    var customlists = DataStore.getItem("bes-quicklists");
 
     if (customlists) {
         values = JSON.parse(customlists);
     } else {
         values = defaults;
-        localStorage.setItem("bes-quicklists", JSON.stringify(values));
+        DataStore.setItem("bes-quicklists", JSON.stringify(values));
     }
 }
 
@@ -233,7 +234,7 @@ function modifyQuicklists() {
             return (v.metal || v.keys) && isFinite(v.metal) && isFinite(v.keys);
         });
 
-        localStorage.setItem("bes-quicklists", JSON.stringify(values));
+        DataStore.setItem("bes-quicklists", JSON.stringify(values));
         Page.hideModal();
     });
 

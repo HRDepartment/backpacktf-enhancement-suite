@@ -1,5 +1,11 @@
+### v1.3.3
+dota2 & csgo support fixes
+Improved cross site navigation further.
+Custom homepage background can now be applied to all brick images (default)
+Random homepage backgrounds using pastebin
+
 ### v1.3.2
-Recent Price Changes bugfix.
+Recent price changes bugfix.
 Improved cross site navigation (clicking on the game-specific backpack sites in the navbar maintains the path.)
 Currency conversion tooltip added to backpack "REFINED" label.
 

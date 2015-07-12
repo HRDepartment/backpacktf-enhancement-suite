@@ -1,6 +1,7 @@
 var Prefs = require('../preferences'),
     Script = require('../script'),
     Pricing = require('../pricing'),
+    Cache = require('../cache'),
     Page = require('../page');
 
 function addMorePopovers(more) {
@@ -56,21 +57,28 @@ function global() {
         help = $('.dropdown a[href="/help"]'),
         more = $('.text-more');
 
+    if (location.pathname === '/' ||
+        (Prefs.pref('homebg', 'replacewalls') &&
+            /\/img\/bricks_/.test(getComputedStyle(document.body)['background-image']))) {
+        applyWallpaper();
+    }
+
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
 
-    $('.navbar-game-select li a').click(function (e) {
+    $('.navbar-game-select li a').each(function () {
         var appid = +this.href.replace(/\D/g, "");
 
-        e.preventDefault();
         if (appid === 440) {
-            location.hostname = "backpack.tf";
+            this.href = "http://backpack.tf" + location.pathname;
         } else if (appid === 570) {
-            location.hostname = "dota2.backpack.tf";
+            this.href = "http://dota2.backpack.tf" + location.pathname;
         } else if (appid === 730) {
-            location.hostname = "csgo.backpack.tf";
-        } else window.location = this.href; // fallback
+            this.href = "http://csgo.backpack.tf" + location.pathname;
+        }
+
+        this.target = "_blank";
      });
 
     if (Prefs.pref('other', 'originalkeys')) {
@@ -86,11 +94,42 @@ function global() {
     if (Page.isBackpack()) backpackHandler();
 }
 
-function applyWallpaper() {
-    var wallpaper = Prefs.prefs.features.homebg;
+function updateWallpaperCache(url, then) {
+    var wallcache = new Cache("bes-cache-wallpaper");
 
-    if (wallpaper.image.trim()) {
-        document.body.style.cssText = 'background: url(' + wallpaper.image + '); background-repeat: ' + wallpaper.repeat + '; background-position: ' + wallpaper.posx + ' ' + wallpaper.posy + '; background-attachment: ' + wallpaper.attachment + '; background-size: ' + wallpaper.sizing + ';';
+    if (wallcache.get("url").value !== url) {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: url,
+            onload: function (resp) {
+                var wp = resp.responseText.replace(/\r/g, "").split("\n");
+
+                wallcache.set("url", url).set("wallpapers", wp).save();
+                then(wp);
+            }
+        });
+    } else {
+        then(wallcache.get("wallpapers").value);
+    }
+}
+
+function applyWallpaper() {
+    var wallpaper = Prefs.prefs.features.homebg,
+        url = wallpaper.image.trim();
+
+    function csstext(img) {
+        return 'background: url(' + img + '); background-repeat: ' + wallpaper.repeat + '; background-position: ' + wallpaper.posx + ' ' + wallpaper.posy + '; background-attachment: ' + wallpaper.attachment + '; background-size: ' + wallpaper.sizing + ';';
+    }
+
+    if (url) {
+        if (url.match(/pastebin\.com\/raw.php\?i=/)) {
+            updateWallpaperCache(url, function (wallpapers) {
+                var wallpaper = wallpapers[Math.floor(Math.random() * wallpapers.length)].trim();
+                if (wallpaper) document.body.style.cssText = csstext(wallpaper);
+            });
+        } else {
+            document.body.style.cssText = csstext(url);
+        }
     }
 }
 
@@ -125,17 +164,14 @@ function index() {
         }
 
         if (updatec === 'click' || updatec === 'listing') {
-            notifs.find(".notification").click(updateNotifications);
+            notifs.find(".notification").click(updateNotifications).attr("target", "_blank");
         }
     }
-
-    applyWallpaper();
 }
 
 function load() {
     global();
-    page('/', index);
-    page.start({click: false, popstate: false});
+    if (location.pathname === '/') index();
 }
 
 module.exports = load;

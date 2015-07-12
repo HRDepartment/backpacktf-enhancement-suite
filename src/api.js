@@ -1,9 +1,10 @@
 var Page = require('./page'),
+    DataStore = require('./datastore'),
     Cache = require('./cache');
 
 var callbacks = [];
 var queue = [], task = false;
-var key = localStorage.getItem("backpackapikey");
+var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
 
 function keyFromPage(body) {
@@ -15,7 +16,7 @@ function keyFromPage(body) {
 
 function removeKey() {
     key = null;
-    localStorage.removeItem("backpackapikey");
+    DataStore.removeItem("backpackapikey");
 }
 
 function registerKey() {
@@ -36,7 +37,7 @@ function setKey(apikey) {
     if (!apikey) return;
 
     key = apikey;
-    localStorage.setItem("backpackapikey", apikey);
+    DataStore.setItem("backpackapikey", apikey);
     callbacks.forEach(function (callback) {
         callback();
     });

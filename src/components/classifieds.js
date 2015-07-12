@@ -280,10 +280,12 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/buy/:quality/:name/:tradable/:craftable/:priceindex?', buy);
-    page('/classifieds/relist/:bid', buy);
-    page('/classifieds/sell/:id', sell);
-    page('/classifieds/', checkAutoclose);
+    var pathname = location.pathname;
+
+    if (pathname.match(/\/classifieds\/buy\/(?:.*)\/(?:.*)\/(?:.*)\/(?:.*)(?:\/?)(?:.*?)/)) buy();
+    if (pathname.match(/\/classifieds\/relist\/(?:.*)/)) buy();
+    if (pathname.match(/\/classifieds\/sell\/(?:.*)/)) sell();
+    if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
     global();
 }
 

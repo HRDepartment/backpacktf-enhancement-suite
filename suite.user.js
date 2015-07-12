@@ -3,18 +3,20 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.2
+// @version      1.3.3
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
 // @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
 // @require      https://cdn.rawgit.com/caresx/steam-econcc/6a2bc2d4abfab4fe9b46aae5ab07aa1db6a544cd/econcc.js
-// @require      https://cdn.rawgit.com/visionmedia/page.js/1102353025a984f7c88f38538bd62ff89e1eeee6/page.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js
 // @downloadURL  https://caresx.github.io/backpacktf-enhancement-suite/suite.user.js
 // @updateURL    https://caresx.github.io/backpacktf-enhancement-suite/suite.meta.js
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_deleteValue
 // ==/UserScript==
 */
 
@@ -30,7 +32,7 @@ require('./api').init();
 
 Prefs.defaults({
     reptf: {enabled: true},
-    quicklist: {enabled: false},
+    quicklist: {enabled: true},
     lotto: {show: true},
     notifications: {updatecount: 'click'},
     pricetags: {
@@ -58,7 +60,8 @@ Prefs.defaults({
         posy: 'top',
         posx: 'center',
         attachment: 'scroll',
-        sizing: 'contain'
+        sizing: 'contain',
+        replacewalls: true
     },
     other: {
         originalkeys: false
@@ -88,13 +91,14 @@ Page.addTooltips();
 $(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;
 
-},{"./api":2,"./components/changes":4,"./components/classifieds":5,"./components/dupes":6,"./components/improvements":7,"./components/prefs":8,"./components/pricetags":9,"./components/quicklist":10,"./components/refresh":11,"./components/reptf":12,"./components/search":13,"./components/users":14,"./menu-actions":15,"./page":16,"./preferences":17}],2:[function(require,module,exports){
+},{"./api":2,"./components/changes":4,"./components/classifieds":5,"./components/dupes":6,"./components/improvements":7,"./components/prefs":8,"./components/pricetags":9,"./components/quicklist":10,"./components/refresh":11,"./components/reptf":12,"./components/search":13,"./components/users":14,"./menu-actions":16,"./page":17,"./preferences":18}],2:[function(require,module,exports){
 var Page = require('./page'),
+    DataStore = require('./datastore'),
     Cache = require('./cache');
 
 var callbacks = [];
 var queue = [], task = false;
-var key = localStorage.getItem("backpackapikey");
+var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
 
 function keyFromPage(body) {
@@ -106,7 +110,7 @@ function keyFromPage(body) {
 
 function removeKey() {
     key = null;
-    localStorage.removeItem("backpackapikey");
+    DataStore.removeItem("backpackapikey");
 }
 
 function registerKey() {
@@ -127,7 +131,7 @@ function setKey(apikey) {
     if (!apikey) return;
 
     key = apikey;
-    localStorage.setItem("backpackapikey", apikey);
+    DataStore.setItem("backpackapikey", apikey);
     callbacks.forEach(function (callback) {
         callback();
     });
@@ -304,12 +308,13 @@ exports.IGetUserListings = function (steamid, callback, args) {
     }, callback, args);
 };
 
-},{"./cache":3,"./page":16}],3:[function(require,module,exports){
+},{"./cache":3,"./datastore":15,"./page":17}],3:[function(require,module,exports){
+var DataStore = require('./datastore');
 var names = [];
 
 function Cache(name, pruneTime) {
     this.name = name;
-    this.storage = JSON.parse(localStorage.getItem(name) || "{}");
+    this.storage = JSON.parse(DataStore.getItem(name) || "{}");
     this.pruneTime = pruneTime || 1000;
 
     names.push(name);
@@ -337,7 +342,7 @@ Cache.prototype.rm = function (name) {
 };
 
 Cache.prototype.save = function () {
-    localStorage.setItem(this.name, JSON.stringify(this.storage));
+    DataStore.setItem(this.name, JSON.stringify(this.storage));
     return this;
 };
 
@@ -350,6 +355,7 @@ Cache.prototype.prune = function () {
     var updated = false,
         time, uid;
 
+    if (this.pruneTime <= 0) return updated;
     for (uid in this.storage) {
         time = this.storage[uid].time;
 
@@ -365,7 +371,7 @@ Cache.prototype.prune = function () {
 module.exports = Cache;
 module.exports.names = names;
 
-},{}],4:[function(require,module,exports){
+},{"./datastore":15}],4:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Pricing = require('../pricing'),
@@ -543,8 +549,7 @@ function addMenuAction() {
 }
 
 function load() {
-    if (Page.appid() !== 440) return; // Sorry Dota
-    if (!Page.isBackpack()) return;
+    if (!Page.isBackpack() || Page.appid() !== 440) return;
 
     API.IGetPrices(function (pricelist) {
         Pricing.shared(function (inst) {
@@ -557,7 +562,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":15,"../page":16,"../preferences":17,"../pricing":18}],5:[function(require,module,exports){
+},{"../api":2,"../menu-actions":16,"../page":17,"../preferences":18,"../pricing":19}],5:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
@@ -840,16 +845,18 @@ function global() {
 }
 
 function load() {
-    page('/classifieds/buy/:quality/:name/:tradable/:craftable/:priceindex?', buy);
-    page('/classifieds/relist/:bid', buy);
-    page('/classifieds/sell/:id', sell);
-    page('/classifieds/', checkAutoclose);
+    var pathname = location.pathname;
+
+    if (pathname.match(/\/classifieds\/buy\/(?:.*)\/(?:.*)\/(?:.*)\/(?:.*)(?:\/?)(?:.*?)/)) buy();
+    if (pathname.match(/\/classifieds\/relist\/(?:.*)/)) buy();
+    if (pathname.match(/\/classifieds\/sell\/(?:.*)/)) sell();
+    if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
     global();
 }
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":15,"../page":16,"../preferences":17,"../pricing":18,"../script":19,"./pricetags":9}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":16,"../page":17,"../preferences":18,"../pricing":19,"../script":20,"./pricetags":9}],6:[function(require,module,exports){
 var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
@@ -958,10 +965,11 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":15,"../page":16,"../script":19}],7:[function(require,module,exports){
+},{"../menu-actions":16,"../page":17,"../script":20}],7:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Script = require('../script'),
     Pricing = require('../pricing'),
+    Cache = require('../cache'),
     Page = require('../page');
 
 function addMorePopovers(more) {
@@ -1017,21 +1025,28 @@ function global() {
         help = $('.dropdown a[href="/help"]'),
         more = $('.text-more');
 
+    if (location.pathname === '/' ||
+        (Prefs.pref('homebg', 'replacewalls') &&
+            /\/img\/bricks_/.test(getComputedStyle(document.body)['background-image']))) {
+        applyWallpaper();
+    }
+
     if (account.length) account.parent().after('<li><a href="/my/preferences"><i class="fa fa-fw fa-cog"></i> My Preferences</a></li>');
     if (help.length) help.parent().before('<li><a href="/lotto"><i class="fa fa-fw fa-money"></i> Lotto</a></li>');
     if (more.length) addMorePopovers(more);
 
-    $('.navbar-game-select li a').click(function (e) {
+    $('.navbar-game-select li a').each(function () {
         var appid = +this.href.replace(/\D/g, "");
 
-        e.preventDefault();
         if (appid === 440) {
-            location.hostname = "backpack.tf";
+            this.href = "http://backpack.tf" + location.pathname;
         } else if (appid === 570) {
-            location.hostname = "dota2.backpack.tf";
+            this.href = "http://dota2.backpack.tf" + location.pathname;
         } else if (appid === 730) {
-            location.hostname = "csgo.backpack.tf";
-        } else window.location = this.href; // fallback
+            this.href = "http://csgo.backpack.tf" + location.pathname;
+        }
+
+        this.target = "_blank";
      });
 
     if (Prefs.pref('other', 'originalkeys')) {
@@ -1047,11 +1062,42 @@ function global() {
     if (Page.isBackpack()) backpackHandler();
 }
 
-function applyWallpaper() {
-    var wallpaper = Prefs.prefs.features.homebg;
+function updateWallpaperCache(url, then) {
+    var wallcache = new Cache("bes-cache-wallpaper");
 
-    if (wallpaper.image.trim()) {
-        document.body.style.cssText = 'background: url(' + wallpaper.image + '); background-repeat: ' + wallpaper.repeat + '; background-position: ' + wallpaper.posx + ' ' + wallpaper.posy + '; background-attachment: ' + wallpaper.attachment + '; background-size: ' + wallpaper.sizing + ';';
+    if (wallcache.get("url").value !== url) {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: url,
+            onload: function (resp) {
+                var wp = resp.responseText.replace(/\r/g, "").split("\n");
+
+                wallcache.set("url", url).set("wallpapers", wp).save();
+                then(wp);
+            }
+        });
+    } else {
+        then(wallcache.get("wallpapers").value);
+    }
+}
+
+function applyWallpaper() {
+    var wallpaper = Prefs.prefs.features.homebg,
+        url = wallpaper.image.trim();
+
+    function csstext(img) {
+        return 'background: url(' + img + '); background-repeat: ' + wallpaper.repeat + '; background-position: ' + wallpaper.posx + ' ' + wallpaper.posy + '; background-attachment: ' + wallpaper.attachment + '; background-size: ' + wallpaper.sizing + ';';
+    }
+
+    if (url) {
+        if (url.match(/pastebin\.com\/raw.php\?i=/)) {
+            updateWallpaperCache(url, function (wallpapers) {
+                var wallpaper = wallpapers[Math.floor(Math.random() * wallpapers.length)].trim();
+                if (wallpaper) document.body.style.cssText = csstext(wallpaper);
+            });
+        } else {
+            document.body.style.cssText = csstext(url);
+        }
     }
 }
 
@@ -1086,25 +1132,23 @@ function index() {
         }
 
         if (updatec === 'click' || updatec === 'listing') {
-            notifs.find(".notification").click(updateNotifications);
+            notifs.find(".notification").click(updateNotifications).attr("target", "_blank");
         }
     }
-
-    applyWallpaper();
 }
 
 function load() {
     global();
-    page('/', index);
-    page.start({click: false, popstate: false});
+    if (location.pathname === '/') index();
 }
 
 module.exports = load;
 
-},{"../page":16,"../preferences":17,"../pricing":18,"../script":19}],8:[function(require,module,exports){
+},{"../cache":3,"../page":17,"../preferences":18,"../pricing":19,"../script":20}],8:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
+    DataStore = require('../datastore'),
     Cache = require('../cache');
 
 function addTab() {
@@ -1163,6 +1207,19 @@ function addTabContent() {
         ].join("");
     }
 
+
+    function buttonsyn(name, component, key) {
+        return buttons(name, component, key, yesno(Prefs.pref(component, key)));
+    }
+
+    function userInputp(label, component, key, placeholder) {
+        return userInput(label, component, key, Prefs.pref(component, key), placeholder);
+    }
+
+    function buttonsChoice(name, component, key, choices) {
+        return buttons(name, component, key, choice(choices, Prefs.pref(component, key)));
+    }
+
     function choice(choices, active) {
         var html = "";
 
@@ -1183,62 +1240,62 @@ function addTabContent() {
         '<h3>backpack.tf Enhancement Suite <span class="text-muted">v' + Page.SUITE_VERSION + '</span></h3>',
         '<div class="padded">',
 
-        buttons('Notifications widget', 'notifications', 'updatecount', choice([
+        buttonsChoice('Notifications widget', 'notifications', 'updatecount', [
             {value: 'no', label: 'No'},
             {value: 'click', label: 'Notification click'},
             {value: 'listing', label: 'Removed listing'},
             {value: 'load', label: 'Always'},
-        ], Prefs.pref('notifications', 'updatecount'))),
+        ]),
         help("Requires you to have donated and disabled ads in favor of the notifications widget (Awesome perks tab). This setting applies only to the notifications widget which is on the site index page. Updates the notifications count badge when a notification is clicked, when you have a [removed listing] notification, or always."),
 
         section('Classifieds', [
-            userInput('Sell order signature', 'classifieds', 'signature', Prefs.pref('classifieds', 'signature')),
+            userInputp('Sell order signature', 'classifieds', 'signature'),
             help("Message automatically inserted in the 'Message' field of Classified sell order listings you create manually."),
-            userInput('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
+            userInputp('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
             help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
-            buttons('Auto-close when listed successfully', 'classifieds', 'autoclose', yesno(Prefs.pref('classifieds', 'autoclose'))),
+            buttonsyn('Auto-close when listed successfully', 'classifieds', 'autoclose'),
             help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
-            buttons('Auto-fill price', 'classifieds', 'autofill', choice([
+            buttonsChoice('Auto-fill price', 'classifieds', 'autofill', [
                 {value: 'backpack', label: 'backpack.tf'},
                 {value: 'lowestauto', label: "Lowest automatic listing"},
                 {value: 'lowest', label: "Lowest listing"},
                 {value: 'default', label: 'Disabled'},
-            ], Prefs.pref('classifieds', 'autofill'))),
+            ]),
             help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used manually. For those options, if there are no (automatic) listings, nothing will be auto-filled."),
         ]),
 
         section('Classifieds quicklisting', [
-            buttons('Enabled', 'quicklist', 'enabled', yesno(Prefs.enabled('quicklist'))),
+            buttonsyn('Enabled', 'quicklist', 'enabled'),
             help("Adds Select Page buttons to your profile. Once you have selected some items, click on the 'Quicklist selection' button. You can select a pre-defined price/message (click the button below) or enter them on the spot. The items will be listed sequentially with the price and message you provided. Only Team Fortress 2 is supported."),
             button('Modify Presets', 'modify-quicklists')
         ]),
 
         section('rep.tf integration', [
-            buttons('Enabled', 'reptf', 'enabled', yesno(Prefs.enabled('reptf'))),
+            buttonsyn('Enabled', 'reptf', 'enabled'),
             help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
         ]),
 
         section('Pricing', [
             help("These options are used by Pricetags and Recent price changes in backpacks."),
 
-            buttons('Price range', 'pricing', 'range', choice([
+            buttonsChoice('Price range', 'pricing', 'range', [
                 {value: EconCC.Range.Low, label: 'Low-end'},
                 {value: EconCC.Range.Mid, label: 'Mid (avg)'},
                 {value: EconCC.Range.High, label: 'High-end'},
-            ], Prefs.pref('pricing', 'range'))),
+            ]),
             help("Price range to be used."),
 
-            buttons('Currency step', 'pricing', 'step', choice([
+            buttonsChoice('Currency step', 'pricing', 'step', [
                 {value: EconCC.Enabled, label: 'Enabled'},
                 {value: EconCC.Disabled, label: 'Disabled'}
-            ], Prefs.pref('pricing', 'step'))),
+            ]),
             help("Whether currency values should be 'prettified'. Metal is rounded to the nearest weapon (except when the value is less than one), and keys are rounded to the nearest 20th. (1.40 ref -> 1.38, 2.27 keys -> 2.25 keys)"),
         ]),
 
         section('Pricetags', [
             help("This section requires your 'Item pricetags' (Team Fortress 2 tab) to be 'Game currency'. Only Team Fortress 2 is supported obviously."),
 
-            buttons('Value item modifications at', 'pricetags', 'modmult', choice([
+            buttonsChoice('Value item modifications at', 'pricetags', 'modmult', [
                 {value: 0, label: '0%'},
                 {value: 0.05, label: '5%'},
                 {value: 0.1, label: '10%'},
@@ -1247,73 +1304,74 @@ function addTabContent() {
                 {value: 0.3, label: '30%'},
                 {value: 0.4, label: '40%'},
                 {value: 0.5, label: '50%'}
-            ], Prefs.pref('pricetags', 'modmult'))),
+            ]),
             help("Strange Parts, Paint."),
 
-            buttons('Tooltips', 'pricetags', 'tooltips', yesno(Prefs.pref('pricetags', 'tooltips'))),
+            buttonsyn('Tooltips', 'pricetags', 'tooltips'),
             help("Adds tooltips to items that are priced in keys."),
         ]),
 
         section('Recent price changes in backpacks', [
-            help("Only Team Fortress 2 is supported by this feature."),
-
-            buttons('Enabled', 'changes', 'enabled', yesno(Prefs.enabled('changes'))),
+            buttonsyn('Enabled', 'changes', 'enabled'),
             help("Shows recent price changes on backpack pages you visit."),
 
-            buttons('Price change period', 'changes', 'period', choice([
+            buttonsChoice('Price change period', 'changes', 'period', [
                 {value: (1000 * 60 * 60 * 8), label: '8 hours'},
                 {value: (1000 * 60 * 60 * 24), label: '1 day'},
                 {value: (1000 * 60 * 60 * 24 * 3), label: '3 days'},
                 {value: (1000 * 60 * 60 * 24 * 5), label: '5 days'},
                 {value: (1000 * 60 * 60 * 24 * 7), label: '1 week'},
-            ], Prefs.pref('changes', 'period'))),
+            ]),
 
-            buttons('Outdated unusual warnings', 'changes', 'outdatedwarn', yesno(Prefs.pref('changes', 'outdatedwarn'))),
+            buttonsyn('Outdated unusual warnings', 'changes', 'outdatedwarn'),
             help("Shows an warning icon on outdated unusuals (ones that were updated more than 3 months ago.) Price changes must be enabled for this feature."),
         ]),
 
         section('Custom homepage background', [
-            userInput('Background image url', 'homebg', 'image', Prefs.pref('homebg', 'image')),
-            help("Leave blank to disable this feature."),
+            userInputp('Background image url', 'homebg', 'image'),
+            help("Leave blank to disable this feature. You can also link to a raw pastebin so an image can be chosen at random <a href='http://pastebin.com/raw.php?i=8CVW6S2z'>(example)</a>. Separate image urls with a newline. Images will share the same options so pick similar ones."),
 
-            buttons('Background repeat', 'homebg', 'repeat', choice([
+            buttonsChoice('Background repeat', 'homebg', 'repeat', [
                 {value: 'no-repeat', label: "Don't repeat"},
                 {value: 'repeat', label: "Tiled"},
                 {value: 'repeat-x', label: 'Repeat horizontally'},
                 {value: 'repeat-y', label: 'Repeat veritcally'},
-            ], Prefs.pref('homebg', 'repeat'))),
+            ]),
 
-            buttons('Background veritcal position', 'homebg', 'posy', choice([
+            buttonsChoice('Background veritcal position', 'homebg', 'posy', [
                 {value: 'top', label: "Top"},
                 {value: 'center', label: "Center"},
                 {value: 'bottom', label: "Bottom"},
-            ], Prefs.pref('homebg', 'posy'))),
+            ]),
 
-            buttons('Background horizontal position', 'homebg', 'posx', choice([
+            buttonsChoice('Background horizontal position', 'homebg', 'posx', [
                 {value: 'left', label: "Left"},
                 {value: 'center', label: "Center"},
                 {value: 'right', label: "Right"},
-            ], Prefs.pref('homebg', 'posx'))),
+            ]),
 
-            buttons('Background attachment', 'homebg', 'attachment', choice([
+            buttonsChoice('Background attachment', 'homebg', 'attachment', [
                 {value: 'scroll', label: "Scroll with page"},
                 {value: 'fixed', label: "Fixed"},
-            ], Prefs.pref('homebg', 'attachment'))),
+            ]),
 
-            buttons('Background sizing', 'homebg', 'sizing', choice([
+            buttonsChoice('Background sizing', 'homebg', 'sizing', [
                 {value: 'none', label: "None"},
                 {value: 'cover', label: "Fill"},
                 {value: 'contain', label: "Contain"},
-            ], Prefs.pref('homebg', 'sizing'))),
+            ]),
+
+            buttonsyn('Replace all walls', 'homebg', 'replacewalls'),
+            help("Replaces the default wall image with your background image url."),
         ]),
 
         section('Other', [
             help("Preferences that don't deserve their own section."),
 
-            buttons('Show lotto', 'lotto', 'show', yesno(Prefs.pref('lotto', 'show'))),
+            buttonsyn('Show lotto', 'lotto', 'show'),
             help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
 
-            buttons('Use original key icons', 'other', 'originalkeys', yesno(Prefs.pref('other', 'originalkeys'))),
+            buttonsyn('Use original key icons', 'other', 'originalkeys'),
             help("Shows the original key's icon (for converted event keys) full size.")
         ]),
 
@@ -1350,16 +1408,16 @@ function addTabContent() {
 
 function clearCache() {
     Cache.names.forEach(function (name) {
-        localStorage.removeItem(name);
+        DataStore.removeItem(name);
     });
 
-    localStorage.removeItem("backpackapikey");
+    DataStore.removeItem("backpackapikey");
     location.reload();
 }
 
 function resetPrefs() {
-    localStorage.removeItem("bes-preferences");
-    localStorage.removeItem("bes-quicklists");
+    DataStore.removeItem("bes-preferences");
+    DataStore.removeItem("bes-quicklists");
     location.reload();
 }
 
@@ -1424,7 +1482,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":16,"../preferences":17,"./quicklist":10}],9:[function(require,module,exports){
+},{"../cache":3,"../datastore":15,"../page":17,"../preferences":18,"./quicklist":10}],9:[function(require,module,exports){
 var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
@@ -1556,9 +1614,10 @@ module.exports.setupInst = setupInst;
 module.exports.applyTagsToItems = applyTagsToItems;
 module.exports.enabled = enabled;
 
-},{"../page":16,"../preferences":17,"../pricing":18,"../script":19}],10:[function(require,module,exports){
+},{"../page":17,"../preferences":18,"../pricing":19,"../script":20}],10:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
+    DataStore = require('../datastore'),
     Prefs = require('../preferences');
 
 var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short":{"keys":["k","k"],"metal":["r","r"]}},
@@ -1570,13 +1629,13 @@ var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short
     values;
 
 function loadQuicklists() {
-    var customlists = localStorage.getItem("bes-quicklists");
+    var customlists = DataStore.getItem("bes-quicklists");
 
     if (customlists) {
         values = JSON.parse(customlists);
     } else {
         values = defaults;
-        localStorage.setItem("bes-quicklists", JSON.stringify(values));
+        DataStore.setItem("bes-quicklists", JSON.stringify(values));
     }
 }
 
@@ -1792,7 +1851,7 @@ function modifyQuicklists() {
             return (v.metal || v.keys) && isFinite(v.metal) && isFinite(v.keys);
         });
 
-        localStorage.setItem("bes-quicklists", JSON.stringify(values));
+        DataStore.setItem("bes-quicklists", JSON.stringify(values));
         Page.hideModal();
     });
 
@@ -1906,7 +1965,7 @@ function load() {
 module.exports = load;
 module.exports.modifyQuicklists = modifyQuicklists;
 
-},{"../page":16,"../preferences":17,"../script":19}],11:[function(require,module,exports){
+},{"../datastore":15,"../page":17,"../preferences":18,"../script":20}],11:[function(require,module,exports){
 var MenuActions = require('../menu-actions');
 var Script = require('../script');
 
@@ -2000,14 +2059,13 @@ function load() {
 
     addButtonTooltips();
     addButtonListeners();
-    page('/classifieds/', addRallHeader);
-    //page('/stats/:quality/:name/:tradable/:craftable/:priceindex?', addRallHeader(true));
+    if (location.pathname === '/classifieds' || location.pathname === '/classifieds/') addRallHeader();
     addMenuAction();
 }
 
 module.exports = load;
 
-},{"../menu-actions":15,"../script":19}],12:[function(require,module,exports){
+},{"../menu-actions":16,"../script":20}],12:[function(require,module,exports){
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -2177,7 +2235,6 @@ function showBans(json) {
 
     addRepTooltips();
     $('#showrep').css('color', reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E');
-    //if (bans.length) $('body').append('<iframe src="https://youtube.com/embed/VlszRjKJqbA?autoplay=1&start=8&end=35" style="display:none;"></iframe>');
 }
 
 function load() {
@@ -2195,7 +2252,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":16,"../script":19}],13:[function(require,module,exports){
+},{"../cache":3,"../page":17,"../script":20}],13:[function(require,module,exports){
 var Script = require('../script'),
     Pricing = require('../pricing'),
     Page = require('../page');
@@ -2443,7 +2500,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":16,"../pricing":18,"../script":19}],14:[function(require,module,exports){
+},{"../page":17,"../pricing":19,"../script":20}],14:[function(require,module,exports){
 var Page = require('../page');
 
 var BadgeSelfMade = {
@@ -2515,7 +2572,29 @@ function load() {
 
 module.exports = load;
 
-},{"../page":16}],15:[function(require,module,exports){
+},{"../page":17}],15:[function(require,module,exports){
+exports.setItem = function (name, value) {
+    return GM_setValue(name, value);
+};
+
+exports.getItem = function (name) {
+    var lsItem = localStorage.getItem(name);
+
+    // Migrate to GM storage for cross subdomain storage
+    if (lsItem) {
+        GM_setValue(name, lsItem);
+        localStorage.removeItem(name);
+        return lsItem;
+    }
+
+    return GM_getValue(name);
+};
+
+exports.removeItem = function (name) {
+    return GM_deleteValue(name);
+};
+
+},{}],16:[function(require,module,exports){
 var Page = require('./page');
 var actions = [];
 
@@ -2549,7 +2628,7 @@ exports.applyActions = function () {
     actions = [];
 };
 
-},{"./page":16}],16:[function(require,module,exports){
+},{"./page":17}],17:[function(require,module,exports){
 var Script = require('./script');
 
 var nonNumerical = /\D/g;
@@ -2723,8 +2802,9 @@ exports.addStyle = GM_addStyle;
 
 exports.SUITE_VERSION = GM_info.script.version;
 
-},{"./script":19}],17:[function(require,module,exports){
-var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');
+},{"./script":20}],18:[function(require,module,exports){
+var DataStore = require('./datastore');
+var preferences = JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
 
 exports.dirty = false;
 exports.prefs = preferences;
@@ -2770,7 +2850,7 @@ exports.defaults = function (defs) {
 
         for (name in names) {
             value = names[name];
-            
+
             if (!o.hasOwnProperty(name)) {
                 o[name] = value;
                 exports.dirty = true;
@@ -2784,7 +2864,7 @@ exports.defaults = function (defs) {
 
 exports.save = function () {
     if (!exports.dirty) return;
-    localStorage.setItem("bes-preferences", JSON.stringify(preferences));
+    DataStore.setItem("bes-preferences", JSON.stringify(preferences));
 };
 
 exports.applyPrefs = function (prefs) {
@@ -2801,7 +2881,7 @@ exports.applyPrefs = function (prefs) {
     return this;
 };
 
-},{}],18:[function(require,module,exports){
+},{"./datastore":15}],19:[function(require,module,exports){
 var Prefs = require('./preferences'),
     API = require('./api'),
     ec, cur;
@@ -2877,7 +2957,7 @@ exports.fromBackpack = function (ec, price) {
 
 exports.unufx = {"Green Confetti":6,"Purple Confetti":7,"Haunted Ghosts":8,"Green Energy":9,"Purple Energy":10,"Circling TF Logo":11,"Massed Flies":12,"Burning Flames":13,"Scorching Flames":14,"Searing Plasma":15,"Vivid Plasma":16,"Sunbeams":17,"Circling Peace Sign":18,"Circling Heart":19,"Stormy Storm":29,"Blizzardy Storm":30,"Nuts n' Bolts":31,"Orbiting Planets":32,"Orbiting Fire":33,"Bubbling":34,"Smoking":35,"Steaming":36,"Flaming Lantern":37,"Cloudy Moon":38,"Cauldron Bubbles":39,"Eerie Orbiting Fire":40,"Knifestorm":43,"Misty Skull":44,"Harvest Moon":45,"It's A Secret To Everybody":46,"Stormy 13th Hour":47,"Attrib_Particle55":55,"Kill-a-Watt":56,"Terror-Watt":57,"Cloud 9":58,"Aces High":59,"Dead Presidents":60,"Miami Nights":61,"Disco Beat Down":62,"Phosphorous":63,"Sulphurous":64,"Memory Leak":65,"Overclocked":66,"Electrostatic":67,"Power Surge":68,"Anti-Freeze":69,"Time Warp":70,"Green Black Hole":71,"Roboactive":72,"Arcana":73,"Spellbound":74,"Chiroptera Venenata":75,"Poisoned Shadows":76,"Something Burning This Way Comes":77,"Hellfire":78,"Darkblaze":79,"Demonflame":80,"Bonzo The All-Gnawing":81,"Amaranthine":82,"Stare From Beyond":83,"The Ooze":84,"Ghastly Ghosts Jr":85,"Haunted Phantasm Jr":86,"Showstopper":3001,"Holy Grail":3003,"'72":3004,"Fountain of Delight":3005,"Screaming Tiger":3006,"Skill Gotten Gains":3007,"Midnight Whirlwind":3008,"Silver Cyclone":3009,"Mega Strike":3010,"Haunted Phantasm":3011,"Ghastly Ghosts":3012,"Frostbite":87,"Molten Mallard":88,"Morning Glory":89,"Death at Dusk":90};
 
-},{"./api":2,"./preferences":17}],19:[function(require,module,exports){
+},{"./api":2,"./preferences":18}],20:[function(require,module,exports){
 exports.exec = function (code) {
     var scr = document.createElement('script'),
         elem = (document.body || document.head || document.documentElement);

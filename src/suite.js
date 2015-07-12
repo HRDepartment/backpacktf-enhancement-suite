@@ -9,7 +9,7 @@ require('./api').init();
 
 Prefs.defaults({
     reptf: {enabled: true},
-    quicklist: {enabled: false},
+    quicklist: {enabled: true},
     lotto: {show: true},
     notifications: {updatecount: 'click'},
     pricetags: {
@@ -37,7 +37,8 @@ Prefs.defaults({
         posy: 'top',
         posx: 'center',
         attachment: 'scroll',
-        sizing: 'contain'
+        sizing: 'contain',
+        replacewalls: true
     },
     other: {
         originalkeys: false

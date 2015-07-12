@@ -1,4 +1,5 @@
-var preferences = JSON.parse(localStorage.getItem("bes-preferences") || '{"features": {}}');
+var DataStore = require('./datastore');
+var preferences = JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
 
 exports.dirty = false;
 exports.prefs = preferences;
@@ -44,7 +45,7 @@ exports.defaults = function (defs) {
 
         for (name in names) {
             value = names[name];
-            
+
             if (!o.hasOwnProperty(name)) {
                 o[name] = value;
                 exports.dirty = true;
@@ -58,7 +59,7 @@ exports.defaults = function (defs) {
 
 exports.save = function () {
     if (!exports.dirty) return;
-    localStorage.setItem("bes-preferences", JSON.stringify(preferences));
+    DataStore.setItem("bes-preferences", JSON.stringify(preferences));
 };
 
 exports.applyPrefs = function (prefs) {

@@ -1,8 +1,9 @@
+var DataStore = require('./datastore');
 var names = [];
 
 function Cache(name, pruneTime) {
     this.name = name;
-    this.storage = JSON.parse(localStorage.getItem(name) || "{}");
+    this.storage = JSON.parse(DataStore.getItem(name) || "{}");
     this.pruneTime = pruneTime || 1000;
 
     names.push(name);
@@ -30,7 +31,7 @@ Cache.prototype.rm = function (name) {
 };
 
 Cache.prototype.save = function () {
-    localStorage.setItem(this.name, JSON.stringify(this.storage));
+    DataStore.setItem(this.name, JSON.stringify(this.storage));
     return this;
 };
 
@@ -43,6 +44,7 @@ Cache.prototype.prune = function () {
     var updated = false,
         time, uid;
 
+    if (this.pruneTime <= 0) return updated;
     for (uid in this.storage) {
         time = this.storage[uid].time;
 
