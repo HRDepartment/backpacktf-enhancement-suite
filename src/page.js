@@ -167,6 +167,10 @@ exports.escapeHtml = function (message) {
     return $('<span>').text(message).text().replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 };
 
-exports.addStyle = GM_addStyle;
+exports.addStyle = function (css) {
+    var style = document.createElement('style');
+    style.textContent = css;
+    (document.head || document.body || document.documentElement || document).appendChild(style);
+};
 
 exports.SUITE_VERSION = GM_info.script.version;

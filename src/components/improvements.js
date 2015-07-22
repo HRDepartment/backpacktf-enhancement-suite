@@ -52,6 +52,26 @@ function backpackHandler() {
     });
 }
 
+function addUnusualDetailsButtons() {
+    function createDetails(item) {
+        var details = window.uDetails_createDetails(item),
+            data = item[0].dataset;
+
+        if (data.app === "440" && data.quality === "5" && data.effectName) {
+            details.find('.fa-list-alt').parent().after(
+                '<a class="btn btn-default btn-xs" href="/unusuals/' + data.name + '"><i class="fa fa-diamond"></i> Unusual</a>'+
+                '<a class="btn btn-default btn-xs" href="/effects/' + data.effectName + '"><i class="fa fa-paper-plane-o"></i> Effect</a>'
+            );
+
+        }
+
+        return details;
+    }
+
+    Script.exec('var uDetails_createDetails = window.createDetails;'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
 function global() {
     var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -92,6 +112,7 @@ function global() {
     }
 
     if (Page.isBackpack()) backpackHandler();
+    addUnusualDetailsButtons();
 }
 
 function updateWallpaperCache(url, then) {
@@ -144,6 +165,7 @@ function index() {
     var lotto = Prefs.pref('lotto', 'show'),
         updatec = Prefs.pref('notifications', 'updatecount'),
         notifs = $('.notification-list'),
+        notifa = $('.md-notification-alert'),
         notifsu = false,
         newnotif;
 
@@ -166,7 +188,11 @@ function index() {
         if (updatec === 'click' || updatec === 'listing') {
             notifs.find(".notification").click(updateNotifications).attr("target", "_blank");
         }
+    } else if (notifa.length && updatec === 'load') {
+        updateNotifications();
     }
+
+    if (notifa.length) notifa[0].setAttribute("target", "_blank");
 }
 
 function load() {

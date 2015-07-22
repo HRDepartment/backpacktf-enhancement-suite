@@ -1,5 +1,6 @@
 var Script = require('../script'),
     Pricing = require('../pricing'),
+    CC = require('./cc'),
     Page = require('../page');
 
 // function (rgb) { return ((parseInt(rgb.substr(0, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(2, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(4, 2), 16) - 45).toString(16)).toUpperCase(); }
@@ -68,7 +69,7 @@ var appQualities = {
 var descids = {"Team Fortress 2": 440, "Counter-Strike: Global Offensive": 730, "Dota 2": 570};
 var appids = {},
     reqcache = {},
-    req, ec;
+    req, ec, cc;
 
 appids.tf = appids.tf2 = 440;
 appids.cs = appids.csgo = appids.go = 730;
@@ -116,12 +117,15 @@ function parseQuery(json, query) {
         setTimeout(function () { reqcache[query] = null; }, 1000 * 60 * 5);
     }
 
-    if (ec) {
+    if (cc) {
         processCustomResults(items);
     } else {
         Pricing.shared(function (e) {
             ec = e;
-            processCustomResults(items);
+            CC.init(function (c) {
+                cc = c;
+                processCustomResults(items);
+            });
         });
     }
 }
@@ -171,7 +175,15 @@ function processCustomResults(items) {
                 desc = i.description,
                 descid = descids[desc],
                 styl = styleGame(i.name, descid),
-                name = styl.name;
+                name = styl.name,
+                pricecc = cc.parse(i.price);
+
+            if (!pricecc.matched) {
+                $('#navbar-search-results').append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
+                return;
+            }
+
+            i.price = "$" + cc.convertToBase(pricecc.val, pricecc.alpha).toFixed(2);
 
             links
                 .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+

@@ -61,7 +61,7 @@ function bpDupeCheck() {
 
         if (stack.find('.dupe-check-result').length) return;
 
-        stack.append('<i class="fa fa-spin fa-spinner dupe-check-result"></i>');
+        stack.append('<div class="arrow-icon"><i class="fa fa-spin fa-spinner dupe-check-result"></i></div>');
         items.push($this);
     });
 
@@ -70,20 +70,28 @@ function bpDupeCheck() {
     }
 
     (function next() {
-        var item = items.shift();
+        var item = items.shift(),
+            spinner, oid;
 
         if (!item) return;
-        $.get("/item/" + item.attr('data-id'), function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html),
-                res = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
+        oid = item.attr('data-original-id');
+        spinner = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
 
+        function applyIcon(dupe) {
             if (dupe) {
-                res.addClass('fa-exclamation-circle').css('color', 'red');
+                spinner.addClass('fa-exclamation-circle').css('color', 'red');
             } else {
-                res.addClass('fa-check-circle').css('color', 'green');
+                spinner.addClass('fa-check-circle').css('color', 'green');
             }
 
             next();
+        }
+
+        if (window.dupeCache.hasOwnProperty(oid)) return applyIcon(window.dupeCache[oid]);
+        $.get("/item/" + oid, function (html) {
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            window.dupeCache[oid] = dupe;
+            applyIcon();
         });
     }());
 }

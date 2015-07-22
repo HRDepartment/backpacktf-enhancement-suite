@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.3
+// @version      1.3.4
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -13,7 +13,6 @@
 // @downloadURL  https://caresx.github.io/backpacktf-enhancement-suite/suite.user.js
 // @updateURL    https://caresx.github.io/backpacktf-enhancement-suite/suite.meta.js
 // @grant        GM_xmlhttpRequest
-// @grant        GM_addStyle
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -59,8 +58,8 @@ Prefs.defaults({
         repeat: 'no-repeat',
         posy: 'top',
         posx: 'center',
-        attachment: 'scroll',
-        sizing: 'contain',
+        attachment: 'fixed',
+        sizing: 'cover',
         replacewalls: true
     },
     other: {
@@ -91,7 +90,7 @@ Page.addTooltips();
 $(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;
 
-},{"./api":2,"./components/changes":4,"./components/classifieds":5,"./components/dupes":6,"./components/improvements":7,"./components/prefs":8,"./components/pricetags":9,"./components/quicklist":10,"./components/refresh":11,"./components/reptf":12,"./components/search":13,"./components/users":14,"./menu-actions":16,"./page":17,"./preferences":18}],2:[function(require,module,exports){
+},{"./api":2,"./components/changes":5,"./components/classifieds":6,"./components/dupes":7,"./components/improvements":8,"./components/prefs":9,"./components/pricetags":10,"./components/quicklist":11,"./components/refresh":12,"./components/reptf":13,"./components/search":14,"./components/users":15,"./menu-actions":17,"./page":18,"./preferences":19}],2:[function(require,module,exports){
 var Page = require('./page'),
     DataStore = require('./datastore'),
     Cache = require('./cache');
@@ -308,7 +307,7 @@ exports.IGetUserListings = function (steamid, callback, args) {
     }, callback, args);
 };
 
-},{"./cache":3,"./datastore":15,"./page":17}],3:[function(require,module,exports){
+},{"./cache":3,"./datastore":16,"./page":18}],3:[function(require,module,exports){
 var DataStore = require('./datastore');
 var names = [];
 
@@ -371,7 +370,91 @@ Cache.prototype.prune = function () {
 module.exports = Cache;
 module.exports.names = names;
 
-},{"./datastore":15}],4:[function(require,module,exports){
+},{"./datastore":16}],4:[function(require,module,exports){
+// http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP
+var Cache = require('../cache');
+
+var ccCache, inst;
+
+var ccFormats = {
+	"USD": {sym: "$", thousand: ",", decimal: "."},
+	"EUR": {sym: "€", thousand: " ", decimal: ","},
+	"RUB": {sym: " pуб.", thousand: "", decimal: ","},
+	"GBP": {sym: "£", thousand: ",", decimal: "."},
+};
+
+function symToAlpha(sym) {
+    var c, format;
+    for (c in ccFormats) {
+        format = ccFormats[c];
+        if (format.sym === sym) return c;
+    }
+}
+
+function extractSymbol(str) {
+	var match = str.match(/(?:\$|€|£| pуб\.)/);
+	return match ? match[0] : "";
+}
+
+function CC(rates) {
+    this.base = rates.base;
+    this.rates = rates.rates;
+
+    this.rates[this.base] = 1;
+}
+
+CC.prototype.convert = function (val, f, t) {
+    if (!this.rates.hasOwnProperty(f) ||
+        !this.rates.hasOwnProperty(t)) return -1;
+    if (f === t) return val;
+
+    if (this.base !== f) val *= this.rates[f];
+    return val * this.rates[t];
+};
+
+CC.prototype.convertFromBase = function (val, t) { return this.convert(val, this.base, t); };
+CC.prototype.convertToBase = function (val, f) { return this.convert(val, f, this.base); };
+CC.prototype.parse = function (str) {
+	var sym = extractSymbol(str),
+        alpha = symToAlpha(sym),
+        format = ccFormats[alpha] || {},
+        val = parseFloat(str.replace(new RegExp(format.thousand, "g"), '').replace(format.decimal, '.').replace(/[^\d|\.]+/g, '').trim());
+
+	return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
+};
+
+function update(then) {
+    GM_xmlhttpRequest({
+        method: "GET",
+        url: "http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP",
+        onload: function (resp) {
+            var json;
+
+            try {
+                json = JSON.parse(resp.responseText);
+            } catch (ex) {
+                return;
+            }
+
+            ccCache.set("rates", json).save();
+            then(inst = new CC(json));
+        }
+    });
+}
+
+exports.init = function (then) {
+    ccCache = new Cache("bes-cache-cc", 24 * 60 * 60 * 1000);
+    var val = ccCache.get("rates"); // 1d
+
+    if (inst) return then(inst);
+    if (val.update) {
+        update(then);
+    } else {
+        then(inst = new CC(val.value));
+    }
+};
+
+},{"../cache":3}],5:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Pricing = require('../pricing'),
@@ -562,7 +645,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":16,"../page":17,"../preferences":18,"../pricing":19}],5:[function(require,module,exports){
+},{"../api":2,"../menu-actions":17,"../page":18,"../preferences":19,"../pricing":20}],6:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
@@ -856,7 +939,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":16,"../page":17,"../preferences":18,"../pricing":19,"../script":20,"./pricetags":9}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":17,"../page":18,"../preferences":19,"../pricing":20,"../script":21,"./pricetags":10}],7:[function(require,module,exports){
 var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
@@ -920,7 +1003,7 @@ function bpDupeCheck() {
 
         if (stack.find('.dupe-check-result').length) return;
 
-        stack.append('<i class="fa fa-spin fa-spinner dupe-check-result"></i>');
+        stack.append('<div class="arrow-icon"><i class="fa fa-spin fa-spinner dupe-check-result"></i></div>');
         items.push($this);
     });
 
@@ -929,20 +1012,28 @@ function bpDupeCheck() {
     }
 
     (function next() {
-        var item = items.shift();
+        var item = items.shift(),
+            spinner, oid;
 
         if (!item) return;
-        $.get("/item/" + item.attr('data-id'), function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html),
-                res = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
+        oid = item.attr('data-original-id');
+        spinner = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
 
+        function applyIcon(dupe) {
             if (dupe) {
-                res.addClass('fa-exclamation-circle').css('color', 'red');
+                spinner.addClass('fa-exclamation-circle').css('color', 'red');
             } else {
-                res.addClass('fa-check-circle').css('color', 'green');
+                spinner.addClass('fa-check-circle').css('color', 'green');
             }
 
             next();
+        }
+
+        if (window.dupeCache.hasOwnProperty(oid)) return applyIcon(window.dupeCache[oid]);
+        $.get("/item/" + oid, function (html) {
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            window.dupeCache[oid] = dupe;
+            applyIcon();
         });
     }());
 }
@@ -965,7 +1056,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":16,"../page":17,"../script":20}],7:[function(require,module,exports){
+},{"../menu-actions":17,"../page":18,"../script":21}],8:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Script = require('../script'),
     Pricing = require('../pricing'),
@@ -1020,6 +1111,26 @@ function backpackHandler() {
     });
 }
 
+function addUnusualDetailsButtons() {
+    function createDetails(item) {
+        var details = window.uDetails_createDetails(item),
+            data = item[0].dataset;
+
+        if (data.app === "440" && data.quality === "5" && data.effectName) {
+            details.find('.fa-list-alt').parent().after(
+                '<a class="btn btn-default btn-xs" href="/unusuals/' + data.name + '"><i class="fa fa-diamond"></i> Unusual</a>'+
+                '<a class="btn btn-default btn-xs" href="/effects/' + data.effectName + '"><i class="fa fa-paper-plane-o"></i> Effect</a>'
+            );
+
+        }
+
+        return details;
+    }
+
+    Script.exec('var uDetails_createDetails = window.createDetails;'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
 function global() {
     var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -1060,6 +1171,7 @@ function global() {
     }
 
     if (Page.isBackpack()) backpackHandler();
+    addUnusualDetailsButtons();
 }
 
 function updateWallpaperCache(url, then) {
@@ -1112,6 +1224,7 @@ function index() {
     var lotto = Prefs.pref('lotto', 'show'),
         updatec = Prefs.pref('notifications', 'updatecount'),
         notifs = $('.notification-list'),
+        notifa = $('.md-notification-alert'),
         notifsu = false,
         newnotif;
 
@@ -1134,7 +1247,11 @@ function index() {
         if (updatec === 'click' || updatec === 'listing') {
             notifs.find(".notification").click(updateNotifications).attr("target", "_blank");
         }
+    } else if (notifa.length && updatec === 'load') {
+        updateNotifications();
     }
+
+    if (notifa.length) notifa[0].setAttribute("target", "_blank");
 }
 
 function load() {
@@ -1144,7 +1261,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":17,"../preferences":18,"../pricing":19,"../script":20}],8:[function(require,module,exports){
+},{"../cache":3,"../page":18,"../preferences":19,"../pricing":20,"../script":21}],9:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
@@ -1482,7 +1599,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../datastore":15,"../page":17,"../preferences":18,"./quicklist":10}],9:[function(require,module,exports){
+},{"../cache":3,"../datastore":16,"../page":18,"../preferences":19,"./quicklist":11}],10:[function(require,module,exports){
 var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
@@ -1614,7 +1731,7 @@ module.exports.setupInst = setupInst;
 module.exports.applyTagsToItems = applyTagsToItems;
 module.exports.enabled = enabled;
 
-},{"../page":17,"../preferences":18,"../pricing":19,"../script":20}],10:[function(require,module,exports){
+},{"../page":18,"../preferences":19,"../pricing":20,"../script":21}],11:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     DataStore = require('../datastore'),
@@ -1965,7 +2082,7 @@ function load() {
 module.exports = load;
 module.exports.modifyQuicklists = modifyQuicklists;
 
-},{"../datastore":15,"../page":17,"../preferences":18,"../script":20}],11:[function(require,module,exports){
+},{"../datastore":16,"../page":18,"../preferences":19,"../script":21}],12:[function(require,module,exports){
 var MenuActions = require('../menu-actions');
 var Script = require('../script');
 
@@ -2065,7 +2182,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":16,"../script":20}],12:[function(require,module,exports){
+},{"../menu-actions":17,"../script":21}],13:[function(require,module,exports){
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -2252,9 +2369,10 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":17,"../script":20}],13:[function(require,module,exports){
+},{"../cache":3,"../page":18,"../script":21}],14:[function(require,module,exports){
 var Script = require('../script'),
     Pricing = require('../pricing'),
+    CC = require('./cc'),
     Page = require('../page');
 
 // function (rgb) { return ((parseInt(rgb.substr(0, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(2, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(4, 2), 16) - 45).toString(16)).toUpperCase(); }
@@ -2323,7 +2441,7 @@ var appQualities = {
 var descids = {"Team Fortress 2": 440, "Counter-Strike: Global Offensive": 730, "Dota 2": 570};
 var appids = {},
     reqcache = {},
-    req, ec;
+    req, ec, cc;
 
 appids.tf = appids.tf2 = 440;
 appids.cs = appids.csgo = appids.go = 730;
@@ -2371,12 +2489,15 @@ function parseQuery(json, query) {
         setTimeout(function () { reqcache[query] = null; }, 1000 * 60 * 5);
     }
 
-    if (ec) {
+    if (cc) {
         processCustomResults(items);
     } else {
         Pricing.shared(function (e) {
             ec = e;
-            processCustomResults(items);
+            CC.init(function (c) {
+                cc = c;
+                processCustomResults(items);
+            });
         });
     }
 }
@@ -2426,7 +2547,15 @@ function processCustomResults(items) {
                 desc = i.description,
                 descid = descids[desc],
                 styl = styleGame(i.name, descid),
-                name = styl.name;
+                name = styl.name,
+                pricecc = cc.parse(i.price);
+
+            if (!pricecc.matched) {
+                $('#navbar-search-results').append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
+                return;
+            }
+
+            i.price = "$" + cc.convertToBase(pricecc.val, pricecc.alpha).toFixed(2);
 
             links
                 .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
@@ -2500,7 +2629,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":17,"../pricing":19,"../script":20}],14:[function(require,module,exports){
+},{"../page":18,"../pricing":20,"../script":21,"./cc":4}],15:[function(require,module,exports){
 var Page = require('../page');
 
 var BadgeSelfMade = {
@@ -2572,7 +2701,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":17}],15:[function(require,module,exports){
+},{"../page":18}],16:[function(require,module,exports){
 exports.setItem = function (name, value) {
     return GM_setValue(name, value);
 };
@@ -2594,7 +2723,7 @@ exports.removeItem = function (name) {
     return GM_deleteValue(name);
 };
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var Page = require('./page');
 var actions = [];
 
@@ -2609,7 +2738,8 @@ exports.applyActions = function () {
     if (!actions.length) return;
 
     if (!document.getElementById('bp-custom-actions')) {
-        $('.navbar-profile-nav .dropdown-menu .divider').eq(1).after('<li class="divider" id="bp-custom-actions"></li>');
+        $('.navbar-profile-nav .dropdown-menu a[href="/donate"]').parent().find('+ .divider') // Fix for mods
+            .after('<li class="divider" id="bp-custom-actions"></li>');
     }
 
     var html = "";
@@ -2628,7 +2758,7 @@ exports.applyActions = function () {
     actions = [];
 };
 
-},{"./page":17}],17:[function(require,module,exports){
+},{"./page":18}],18:[function(require,module,exports){
 var Script = require('./script');
 
 var nonNumerical = /\D/g;
@@ -2798,11 +2928,15 @@ exports.escapeHtml = function (message) {
     return $('<span>').text(message).text().replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 };
 
-exports.addStyle = GM_addStyle;
+exports.addStyle = function (css) {
+    var style = document.createElement('style');
+    style.textContent = css;
+    (document.head || document.body || document.documentElement || document).appendChild(style);
+};
 
 exports.SUITE_VERSION = GM_info.script.version;
 
-},{"./script":20}],18:[function(require,module,exports){
+},{"./script":21}],19:[function(require,module,exports){
 var DataStore = require('./datastore');
 var preferences = JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
 
@@ -2881,7 +3015,7 @@ exports.applyPrefs = function (prefs) {
     return this;
 };
 
-},{"./datastore":15}],19:[function(require,module,exports){
+},{"./datastore":16}],20:[function(require,module,exports){
 var Prefs = require('./preferences'),
     API = require('./api'),
     ec, cur;
@@ -2957,7 +3091,7 @@ exports.fromBackpack = function (ec, price) {
 
 exports.unufx = {"Green Confetti":6,"Purple Confetti":7,"Haunted Ghosts":8,"Green Energy":9,"Purple Energy":10,"Circling TF Logo":11,"Massed Flies":12,"Burning Flames":13,"Scorching Flames":14,"Searing Plasma":15,"Vivid Plasma":16,"Sunbeams":17,"Circling Peace Sign":18,"Circling Heart":19,"Stormy Storm":29,"Blizzardy Storm":30,"Nuts n' Bolts":31,"Orbiting Planets":32,"Orbiting Fire":33,"Bubbling":34,"Smoking":35,"Steaming":36,"Flaming Lantern":37,"Cloudy Moon":38,"Cauldron Bubbles":39,"Eerie Orbiting Fire":40,"Knifestorm":43,"Misty Skull":44,"Harvest Moon":45,"It's A Secret To Everybody":46,"Stormy 13th Hour":47,"Attrib_Particle55":55,"Kill-a-Watt":56,"Terror-Watt":57,"Cloud 9":58,"Aces High":59,"Dead Presidents":60,"Miami Nights":61,"Disco Beat Down":62,"Phosphorous":63,"Sulphurous":64,"Memory Leak":65,"Overclocked":66,"Electrostatic":67,"Power Surge":68,"Anti-Freeze":69,"Time Warp":70,"Green Black Hole":71,"Roboactive":72,"Arcana":73,"Spellbound":74,"Chiroptera Venenata":75,"Poisoned Shadows":76,"Something Burning This Way Comes":77,"Hellfire":78,"Darkblaze":79,"Demonflame":80,"Bonzo The All-Gnawing":81,"Amaranthine":82,"Stare From Beyond":83,"The Ooze":84,"Ghastly Ghosts Jr":85,"Haunted Phantasm Jr":86,"Showstopper":3001,"Holy Grail":3003,"'72":3004,"Fountain of Delight":3005,"Screaming Tiger":3006,"Skill Gotten Gains":3007,"Midnight Whirlwind":3008,"Silver Cyclone":3009,"Mega Strike":3010,"Haunted Phantasm":3011,"Ghastly Ghosts":3012,"Frostbite":87,"Molten Mallard":88,"Morning Glory":89,"Death at Dusk":90};
 
-},{"./api":2,"./preferences":18}],20:[function(require,module,exports){
+},{"./api":2,"./preferences":19}],21:[function(require,module,exports){
 exports.exec = function (code) {
     var scr = document.createElement('script'),
         elem = (document.body || document.head || document.documentElement);

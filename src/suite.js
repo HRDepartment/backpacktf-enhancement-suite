@@ -36,8 +36,8 @@ Prefs.defaults({
         repeat: 'no-repeat',
         posy: 'top',
         posx: 'center',
-        attachment: 'scroll',
-        sizing: 'contain',
+        attachment: 'fixed',
+        sizing: 'cover',
         replacewalls: true
     },
     other: {

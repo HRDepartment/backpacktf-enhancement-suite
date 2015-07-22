@@ -12,7 +12,8 @@ exports.applyActions = function () {
     if (!actions.length) return;
 
     if (!document.getElementById('bp-custom-actions')) {
-        $('.navbar-profile-nav .dropdown-menu .divider').eq(1).after('<li class="divider" id="bp-custom-actions"></li>');
+        $('.navbar-profile-nav .dropdown-menu a[href="/donate"]').parent().find('+ .divider') // Fix for mods
+            .after('<li class="divider" id="bp-custom-actions"></li>');
     }
 
     var html = "";

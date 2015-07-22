@@ -1,8 +1,14 @@
+### v1.3.4
+Fixed scm search for EUR, GBP, and RUB wallets. Warning added for unsupported wallets.
+Update notifications set to page load now also updates the notification count when any page is loaded.
+Mods should now have the correct menu action order.
+/unusuals and /effects link buttons on all unusual item popovers.
+
 ### v1.3.3
 dota2 & csgo support fixes
 Improved cross site navigation further.
 Custom homepage background can now be applied to all brick images (default)
-Random homepage backgrounds using pastebin
+Random homepage backgrounds using Pastebin.
 
 ### v1.3.2
 Recent price changes bugfix.
