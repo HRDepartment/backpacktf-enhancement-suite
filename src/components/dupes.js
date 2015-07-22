@@ -75,9 +75,11 @@ function bpDupeCheck() {
 
         if (!item) return;
         oid = item.attr('data-original-id');
-        spinner = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
+        spinner = item.find('.dupe-check-result');
 
         function applyIcon(dupe) {
+            spinner.removeClass('fa-spinner fa-spin');
+            
             if (dupe) {
                 spinner.addClass('fa-exclamation-circle').css('color', 'red');
             } else {
@@ -87,10 +89,10 @@ function bpDupeCheck() {
             next();
         }
 
-        if (window.dupeCache.hasOwnProperty(oid)) return applyIcon(window.dupeCache[oid]);
+        if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
         $.get("/item/" + oid, function (html) {
             var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            window.dupeCache[oid] = dupe;
+            unsafeWindow.dupeCache[oid] = dupe;
             applyIcon();
         });
     }());

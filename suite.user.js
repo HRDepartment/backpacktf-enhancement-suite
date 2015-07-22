@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.4
+// @version      1.3.4.1
 // @description  Enhances your backpack.tf experience.
 // @match        *://*.backpack.tf/*
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
@@ -1017,9 +1017,11 @@ function bpDupeCheck() {
 
         if (!item) return;
         oid = item.attr('data-original-id');
-        spinner = item.find('.dupe-check-result').removeClass('fa-spinner fa-spin');
+        spinner = item.find('.dupe-check-result');
 
         function applyIcon(dupe) {
+            spinner.removeClass('fa-spinner fa-spin');
+            
             if (dupe) {
                 spinner.addClass('fa-exclamation-circle').css('color', 'red');
             } else {
@@ -1029,10 +1031,10 @@ function bpDupeCheck() {
             next();
         }
 
-        if (window.dupeCache.hasOwnProperty(oid)) return applyIcon(window.dupeCache[oid]);
+        if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
         $.get("/item/" + oid, function (html) {
             var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            window.dupeCache[oid] = dupe;
+            unsafeWindow.dupeCache[oid] = dupe;
             applyIcon();
         });
     }());
