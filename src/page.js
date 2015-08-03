@@ -173,4 +173,6 @@ exports.addStyle = function (css) {
     (document.head || document.body || document.documentElement || document).appendChild(style);
 };
 
+exports.bp = function () { return unsafeWindow.backpack; }
+
 exports.SUITE_VERSION = GM_info.script.version;

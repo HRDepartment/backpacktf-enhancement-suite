@@ -1,3 +1,7 @@
+### v1.3.5
+Removed scrap.tf and PPM from rep.tf display.
+Fixed many bugs introduced by the responsive design beta.
+
 ### v1.3.4
 Fixed scm search for EUR, GBP, and RUB wallets. Warning added for unsupported wallets.
 Update notifications set to page load now also updates the notification count when any page is loaded.

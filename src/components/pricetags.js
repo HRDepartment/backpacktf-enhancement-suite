@@ -92,9 +92,9 @@ function applyTagsToItems(items) {
     });
 
     // Clear price cache for calculateValue()
-    if (clear && unsafeWindow.calculateValue) {
+    if (clear && Page.bp().updateValues) {
         Script.exec('$("' + items.selector + '").removeData("price");');
-        unsafeWindow.calculateValue();
+        Page.bp().updateValues();
     }
 
     if (tooltips) {

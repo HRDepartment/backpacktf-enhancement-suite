@@ -70,8 +70,8 @@ function addIssuers() {
 
     spinner("Outpost");
     spinner("Bazaar");
-    spinner("Scrap.tf");
-    spinner("PPM");
+    //spinner("Scrap.tf");
+    //spinner("PPM");
     // Uncomment to enable
     //spinner("TF2-Trader");
     //spinner("MCT");
@@ -159,8 +159,8 @@ function showBans(json) {
     ban("Outpost", json.opBans);
     ban("Bazaar", json.bzBans);
     ban("Backpack.tf", json.bptfBans);
-    ban("Scrap.tf", json.stfBans);
-    ban("PPM", json.ppmBans);
+    //ban("Scrap.tf", json.stfBans);
+    //ban("PPM", json.ppmBans);
     //ban("TF2-Trader", json.tf2tBans);
     //ban("MCT", json.mctBans);
     //ban("BBG", json.bbgBans);

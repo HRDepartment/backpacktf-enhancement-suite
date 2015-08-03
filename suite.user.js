@@ -3,9 +3,10 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.4.1
+// @version      1.3.5
 // @description  Enhances your backpack.tf experience.
-// @match        *://*.backpack.tf/*
+// @include      /^https?://.*\.?backpack\.tf/.*$/
+// @exclude      /^https?://forums\.backpack\.tf/.*$/
 // @require      https://code.jquery.com/jquery-2.1.3.min.js
 // @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
 // @require      https://cdn.rawgit.com/caresx/steam-econcc/6a2bc2d4abfab4fe9b46aae5ab07aa1db6a544cd/econcc.js
@@ -988,7 +989,7 @@ function addDupeCheck() {
 function bpDupeCheck() {
     var items = [];
 
-    if (!unsafeWindow.selection_mode) {
+    if (!Page.bp().selectionMode) {
         return alert("Select the items you want to dupe-check first.");
     }
 
@@ -1021,7 +1022,7 @@ function bpDupeCheck() {
 
         function applyIcon(dupe) {
             spinner.removeClass('fa-spinner fa-spin');
-            
+
             if (dupe) {
                 spinner.addClass('fa-exclamation-circle').css('color', 'red');
             } else {
@@ -1696,9 +1697,9 @@ function applyTagsToItems(items) {
     });
 
     // Clear price cache for calculateValue()
-    if (clear && unsafeWindow.calculateValue) {
+    if (clear && Page.bp().updateValues) {
         Script.exec('$("' + items.selector + '").removeData("price");');
-        unsafeWindow.calculateValue();
+        Page.bp().updateValues();
     }
 
     if (tooltips) {
@@ -1763,7 +1764,7 @@ function addQuicklistPanelButtons() {
 }
 
 function updateSelectQuicklist() {
-    $("#bp-custom-select-ql").toggleClass("disabled", !unsafeWindow.selection_mode);
+    $("#bp-custom-select-ql").toggleClass("disabled", !Page.bp().selectionMode);
 }
 
 function onActionButtonClick() {
@@ -1866,7 +1867,7 @@ function addEventListeners() {
     $('.item:not(.spacer)').click(updateSelectQuicklist);
 
     $("#bp-custom-select-ql").click(function () {
-        if (unsafeWindow.selection_mode) selectQuicklist();
+        if (Page.bp().selectionMode) selectQuicklist();
     });
 }
 
@@ -1878,7 +1879,7 @@ function listSelection(value) {
         at = 0;
 
     _clearSelection();
-    unsafeWindow.updateClearSelectionState();
+    Page.bp().updateClearSelectionState();
 
     selection.each(function () {
         var $this = $(this);
@@ -1987,28 +1988,23 @@ function selectItem(element) { element.removeClass('unselected'); }
 function unselectItem(element) { element.addClass('unselected'); }
 
 function addSelectPage() {
+    var backpack = Page.bp();
+
     function selectItems(items) {
-        unsafeWindow.selection_mode = true;
+        backpack.selectionMode = true;
         selectItem(items);
 
-        unsafeWindow.updateClearSelectionState();
-        unsafeWindow.calculateValue();
+        backpack.updateClearSelectionState();
+        backpack.updateValues();
         updateSelectQuicklist();
     }
 
     $('#backpack').on('click', '.select-page', function () {
-        var page = +this.dataset.page,
-            pageitems;
-
-        if (page >= 1) {
-            pageitems = $('.pagenum[data-page-num="' + page + '"]').nextUntil('.pagenum').not('.spacer').filter(':visible');
-        } else { // new items
-            pageitems = $('#newlist .item');
-        }
+        var pageitems = $(this).closest('.backpack-page').find('.item').not('.spacer').filter(':visible');
 
         if (!pageitems.length) return;
 
-        if (unsafeWindow.selection_mode) {
+        if (backpack.selectionMode) {
             if (pageitems.length === pageitems.not('.unselected').length) { // all == selected
                 unselectItem(pageitems);
 
@@ -2027,29 +2023,25 @@ function addSelectPage() {
 }
 
 function _clearSelection() {
-    unsafeWindow.clearSelection();
+    Page.bp().clearSelection();
     updateSelectQuicklist();
 }
 
 function addSelectPageButtons() {
-    $('.pagenum').each(function () {
+    $('.page-number').each(function () {
         var $this = $(this),
             label = $this.find('.page-anchor'),
             page, sp;
 
         if (!label[0]) return;
-        page = label[0].id.replace('page', '');
         sp = $this.find('.select-page');
 
         if (sp.length) {
-            $this.attr('data-page-num', page);
-            sp.attr('date-page', page);
             return;
         }
 
-        if (!$this.nextUntil('.pagenum').not('.spacer').filter(':visible').length) return;
-        $this.attr('data-page-num', page);
-        label.after('<span class="btn btn-primary btn-xs pull-right select-page" data-page="' + page + '" style="margin-right: 2.7%;margin-top: -0.1%;">Select Page</span>');
+        if (!$this.nextUntil('.page-number').not('.spacer').filter(':visible').length) return;
+        label.after('<span class="btn btn-primary btn-xs pull-right select-page" style="margin-right: 2.7%;margin-top: -0.1%;">Select Page</span>');
     });
 }
 
@@ -2060,9 +2052,9 @@ function addHooks() {
         }
     });
 
-    Script.exec("var old_updateMargins = window.updateMargins;"+
+    Script.exec("var old_updateDisplay = window.backpack.updateDisplay;"+
                 addSelectPageButtons+
-                "window.updateMargins = function () { old_updateMargins(); addSelectPageButtons(); }");
+                "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }");
 }
 
 function load() {
@@ -2257,8 +2249,8 @@ function addIssuers() {
 
     spinner("Outpost");
     spinner("Bazaar");
-    spinner("Scrap.tf");
-    spinner("PPM");
+    //spinner("Scrap.tf");
+    //spinner("PPM");
     // Uncomment to enable
     //spinner("TF2-Trader");
     //spinner("MCT");
@@ -2346,8 +2338,8 @@ function showBans(json) {
     ban("Outpost", json.opBans);
     ban("Bazaar", json.bzBans);
     ban("Backpack.tf", json.bptfBans);
-    ban("Scrap.tf", json.stfBans);
-    ban("PPM", json.ppmBans);
+    //ban("Scrap.tf", json.stfBans);
+    //ban("PPM", json.ppmBans);
     //ban("TF2-Trader", json.tf2tBans);
     //ban("MCT", json.mctBans);
     //ban("BBG", json.bbgBans);
@@ -2531,7 +2523,7 @@ function styleGame(iname, appid) {
 }
 
 function processCustomResults(items) {
-    var searchbox = $('#navbar-search-results'),
+    var searchbox = $('.site-search-dropdown'),
         results = $("<ul>"),
         descs = {},
         idesc;
@@ -2610,17 +2602,19 @@ function checkCustom(query) {
 }
 
 function addEventListeners() {
+    var inst = unsafeWindow.$('#navbar-search').data('instance');
+
     Script.exec('$("#navbar-search").off("keyup");');
 
     $('#navbar-search').keyup(function() {
         var query = $(this).val().trim();
-        if (unsafeWindow.old_query !== query) {
-            clearTimeout(unsafeWindow.search_timer);
-            unsafeWindow.search_timer = setTimeout(function () {
+        if (inst.lastQuery !== query) {
+            clearTimeout(inst.timer);
+            inst.timer = setTimeout(function () {
                 if (checkCustom(query)) processCustom(query);
-                else unsafeWindow.processSearch(query);
+                else inst.processSearch();
             }, 350);
-            unsafeWindow.old_query = query;
+            inst.lastQuery = query;
         }
     });
 }
@@ -2935,6 +2929,8 @@ exports.addStyle = function (css) {
     style.textContent = css;
     (document.head || document.body || document.documentElement || document).appendChild(style);
 };
+
+exports.bp = function () { return unsafeWindow.backpack; }
 
 exports.SUITE_VERSION = GM_info.script.version;
 

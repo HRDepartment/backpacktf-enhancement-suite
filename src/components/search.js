@@ -157,7 +157,7 @@ function styleGame(iname, appid) {
 }
 
 function processCustomResults(items) {
-    var searchbox = $('#navbar-search-results'),
+    var searchbox = $('.site-search-dropdown'),
         results = $("<ul>"),
         descs = {},
         idesc;
@@ -236,17 +236,19 @@ function checkCustom(query) {
 }
 
 function addEventListeners() {
+    var inst = unsafeWindow.$('#navbar-search').data('instance');
+
     Script.exec('$("#navbar-search").off("keyup");');
 
     $('#navbar-search').keyup(function() {
         var query = $(this).val().trim();
-        if (unsafeWindow.old_query !== query) {
-            clearTimeout(unsafeWindow.search_timer);
-            unsafeWindow.search_timer = setTimeout(function () {
+        if (inst.lastQuery !== query) {
+            clearTimeout(inst.timer);
+            inst.timer = setTimeout(function () {
                 if (checkCustom(query)) processCustom(query);
-                else unsafeWindow.processSearch(query);
+                else inst.processSearch();
             }, 350);
-            unsafeWindow.old_query = query;
+            inst.lastQuery = query;
         }
     });
 }

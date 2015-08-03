@@ -46,7 +46,7 @@ function addDupeCheck() {
 function bpDupeCheck() {
     var items = [];
 
-    if (!unsafeWindow.selection_mode) {
+    if (!Page.bp().selectionMode) {
         return alert("Select the items you want to dupe-check first.");
     }
 
@@ -79,7 +79,7 @@ function bpDupeCheck() {
 
         function applyIcon(dupe) {
             spinner.removeClass('fa-spinner fa-spin');
-            
+
             if (dupe) {
                 spinner.addClass('fa-exclamation-circle').css('color', 'red');
             } else {
