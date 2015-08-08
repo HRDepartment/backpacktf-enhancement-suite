@@ -3,14 +3,11 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.3.5
+// @version      1.4.0
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
-// @require      https://code.jquery.com/jquery-2.1.3.min.js
-// @require      https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js
-// @require      https://cdn.rawgit.com/caresx/steam-econcc/6a2bc2d4abfab4fe9b46aae5ab07aa1db6a544cd/econcc.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js
+// @require      https://caresx.github.io/backpacktf-enhancement-suite/deps.js
 // @downloadURL  https://caresx.github.io/backpacktf-enhancement-suite/suite.user.js
 // @updateURL    https://caresx.github.io/backpacktf-enhancement-suite/suite.meta.js
 // @grant        GM_xmlhttpRequest
@@ -315,7 +312,7 @@ var names = [];
 function Cache(name, pruneTime) {
     this.name = name;
     this.storage = JSON.parse(DataStore.getItem(name) || "{}");
-    this.pruneTime = pruneTime || 1000;
+    this.pruneTime = typeof pruneTime === 'number' ? pruneTime : 1000;
 
     names.push(name);
 }
@@ -738,6 +735,10 @@ function peekload(html) {
         $("#classifieds-buyers").html(buyers);
     }
 
+    if (!sellers.length && buyers.length) {
+        $ppb.append("<p>No buy or sell orders for this item.</p>");
+    }
+
     clones = $('.classifieds-clone');
     if (clones.length) {
         Page.addItemPopovers(clones, $ppb);
@@ -755,25 +756,11 @@ function peekload(html) {
 }
 
 function peek(e) {
-    var item = $('.item'),
-        name, url;
-
     e.preventDefault();
-    name = item.data('name');
-    if (item.data('australium')) {
-        name = name.substring(11);
-    }
-    url = '/classifieds/?item=' + name + '&quality=' + item.data('quality') + '&tradable=' + item.data('tradable') + '&craftable=' + item.data('craftable');
-    if (item.data('australium')) {
-        url += '&australium=1';
-    }
-    if (item.data('crate')) {
-        url += '&numeric=crate&comparison=eq&value=' + item.data('crate');
-    }
 
     $.ajax({
         method: "GET",
-        url: url,
+        url: $('.item').data('listing-url'),
         dataType: "html"
     }).success(peekload);
 }
@@ -931,10 +918,10 @@ function global() {
 function load() {
     var pathname = location.pathname;
 
-    if (pathname.match(/\/classifieds\/buy\/(?:.*)\/(?:.*)\/(?:.*)\/(?:.*)(?:\/?)(?:.*?)/)) buy();
-    if (pathname.match(/\/classifieds\/relist\/(?:.*)/)) buy();
-    if (pathname.match(/\/classifieds\/sell\/(?:.*)/)) sell();
-    if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
+         if (pathname.match(/\/classifieds\/buy\/.{1,}\/.{1,}\/.{1,}\/.{1,}\/?.*/)) buy();
+    else if (pathname.match(/\/classifieds\/relist\/.{1,}/)) buy();
+    else if (pathname.match(/\/classifieds\/sell\/.{1,}/)) sell();
+    else if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
     global();
 }
 
@@ -1178,7 +1165,7 @@ function global() {
 }
 
 function updateWallpaperCache(url, then) {
-    var wallcache = new Cache("bes-cache-wallpaper");
+    var wallcache = new Cache("bes-cache-wallpaper", 0);
 
     if (wallcache.get("url").value !== url) {
         GM_xmlhttpRequest({
@@ -1696,8 +1683,8 @@ function applyTagsToItems(items) {
         }
     });
 
-    // Clear price cache for calculateValue()
-    if (clear && Page.bp().updateValues) {
+    // Clear price cache for updateValues()
+    if (clear && Page.bp()) {
         Script.exec('$("' + items.selector + '").removeData("price");');
         Page.bp().updateValues();
     }
@@ -2390,6 +2377,24 @@ var appQualities = {
             "Haunted": ["#38F3AB", "#0bc67e"],
             "Collector's": ["#830000", "#560000"]
         },
+        qids: {
+			"normal": 0,
+			"genuine": 1,
+			"rarity2": 2,
+			"vintage": 3,
+			"rarity3": 4,
+			"unusual": 5,
+			"unique": 6,
+			"community": 7,
+			"valve": 8,
+			"self-made": 9,
+			"customized": 10,
+			"strange": 11,
+			"completed": 12,
+			"haunted": 13,
+			"collector's": 14,
+			"decorated weapon": 15
+		},
         defquality: "Unique"
     },
     570: {
@@ -2453,6 +2458,99 @@ function makeRequest(url, done, query) {
             done(json, query);
         }
     });
+}
+
+function parseClassifiedsTerm(term) {
+    var parts = term.split(','),
+        iname = parts[0],
+        attrs = (parts[1] || "").split('+'),
+        params = ['item=' + iname],
+        qid;
+
+    if (attrs[0]) params.push('quality=' + (isNaN(parseInt(attrs[0], 10)) ? (appQualities[440].qids[attrs[0].toLowerCase()] || 6) : attrs[0]));
+    if (attrs[1]) {
+        if (attrs[1].toLowerCase() === 'australium') params.push('australium=1');
+    }
+
+    if (parts[2] === '+') params.push('tradable=1'); else if (parts[2] === '-') params.push('tradable=0');
+    if (parts[3] === '+') params.push('craftable=1'); else if (parts[3] === '-') params.push('craftable=0');
+    return params.join('&');
+}
+
+function classifiedsRequest(term, query) {
+    if (req) req.abort();
+
+    req = GM_xmlhttpRequest({
+        method: "GET",
+        url: 'https://backpack.tf/classifieds?' + parseClassifiedsTerm(term),
+        onload: function (content) {
+            reqcache[query] = content.responseText;
+            setTimeout(function () { delete reqcache[query]; }, 1000 * 60 * 5);
+
+            Pricing.shared(function (e) {
+                ec = e;
+                ec.scope({step: EconCC.Disabled}, function () {
+                    processClassifieds(content.responseText);
+                });
+            });
+        }
+    });
+}
+
+function parseClassifieds(content) {
+    var html = $($.parseHTML(content));
+    return html.find('.item').map(function () {
+        var img = this.querySelector('.item-icon').style.backgroundImage;
+        this.dataset.imgurl = img.substring(img.indexOf('(') + 1, img.indexOf(')'));
+        this.dataset.title = this.getAttribute('title');
+        return this.dataset;
+    }).toArray();
+}
+
+function processClassifieds(content) {
+    var searchbox = $('.site-search-dropdown'),
+        html = '',
+        sections = {},
+        section, s, price, ecs, ecc;
+
+    searchbox.empty();
+    if (!content) {
+        searchbox.append('<li class="header">No matches</li>');
+    } else {
+        parseClassifieds(content).forEach(function (data, index) {
+            var colors = appQualities[440].qualities[data.qName],
+                colorStyle = 'border-color:' + colors[1] + ';background-color:' + colors[0],
+                stateClasses = (data.craftable === '1' ? '' : ' nocraft') + (data.tradable === '1' ? '' : ' notrade'),
+                sect = sections[data.title],
+                price = Pricing.fromListing(ec, data.listingPrice),
+                ptag = price.value + ';' + price.currency;
+
+            if (data.listingIntent !== '1') return; // seller
+            if (!sect) {
+                sect = sections[data.title] = {prices: {}, url: data.listingUrl, states: stateClasses, colors: colorStyle, img: data.imgurl};
+            }
+
+            sect.prices[ptag] = (sect.prices[ptag] || 0) + 1;
+        });
+
+        for (section in sections) {
+            s = sections[section];
+
+            html += '<li class="mini-price"><div class="item-mini"><img src="' + s.img + '"></div><div class="item-name">' + section + '</div><div class="buttons">';
+            for (price in s.prices) {
+                ecs = price.split(';');
+                ecc = {value: ec.convertFromBC(+ecs[0], ecs[1]), currency: ecs[1]};
+
+                html +=
+                '<a href="' + s.url + '" class="btn btn-xs classifieds-search-tooltip' + s.states + '" style="' + s.colors + '" title="' + ec.format(ecc, EconCC.Mode.Long) +'">'+
+                s.prices[price] + '× ' + ec.format(ecc, EconCC.Mode.Label) + '</a>'
+            }
+            html += '</div></li>';
+        }
+
+        searchbox.append(html);
+        Page.addTooltips($('.classifieds-search-tooltip'), '.site-search-dropdown');
+    }
 }
 
 function parseQuery(json, query) {
@@ -2545,7 +2643,7 @@ function processCustomResults(items) {
                 pricecc = cc.parse(i.price);
 
             if (!pricecc.matched) {
-                $('#navbar-search-results').append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
+                searchbox.append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
                 return;
             }
 
@@ -2577,7 +2675,7 @@ function processCustomResults(items) {
     }
 
     searchbox.html(results.html());
-    Page.addTooltips($('.scm-search-tooltip'), '#navbar-search-results');
+    Page.addTooltips($('.scm-search-tooltip'), '.site-search-dropdown');
 }
 
 function searchURL(appid, query) {
@@ -2591,7 +2689,15 @@ function processCustom(query) {
         search = parts.splice(1).join(':'),
         appid = appids[scope];
 
-    if (!search || !appid) return;
+    if (!search) return;
+
+    if (scope === 'classified' || scope === 'classifieds' || scope === 'cl') {
+        if (reqcache.hasOwnProperty(query)) processClassifieds(reqcache[query]);
+        else classifiedsRequest(search, query);
+        return;
+    }
+
+    if (!appid) return;
 
     if (reqcache[query]) processCustomResults(reqcache[query]);
     else makeRequest(searchURL(appid, search), parseQuery, query);
@@ -3019,8 +3125,6 @@ var Prefs = require('./preferences'),
     ec, cur;
 
 exports.shared = function (cb) {
-    if (cur && !ec) ec = new EconCC(cur);
-
     if (ec) {
         return cb(ec, cur);
     }
@@ -3086,8 +3190,6 @@ exports.fromBackpack = function (ec, price) {
     var val = ec.parse(price);
     return {value: ec.convertToBC(val), currency: val.currency};
 };
-
-exports.unufx = {"Green Confetti":6,"Purple Confetti":7,"Haunted Ghosts":8,"Green Energy":9,"Purple Energy":10,"Circling TF Logo":11,"Massed Flies":12,"Burning Flames":13,"Scorching Flames":14,"Searing Plasma":15,"Vivid Plasma":16,"Sunbeams":17,"Circling Peace Sign":18,"Circling Heart":19,"Stormy Storm":29,"Blizzardy Storm":30,"Nuts n' Bolts":31,"Orbiting Planets":32,"Orbiting Fire":33,"Bubbling":34,"Smoking":35,"Steaming":36,"Flaming Lantern":37,"Cloudy Moon":38,"Cauldron Bubbles":39,"Eerie Orbiting Fire":40,"Knifestorm":43,"Misty Skull":44,"Harvest Moon":45,"It's A Secret To Everybody":46,"Stormy 13th Hour":47,"Attrib_Particle55":55,"Kill-a-Watt":56,"Terror-Watt":57,"Cloud 9":58,"Aces High":59,"Dead Presidents":60,"Miami Nights":61,"Disco Beat Down":62,"Phosphorous":63,"Sulphurous":64,"Memory Leak":65,"Overclocked":66,"Electrostatic":67,"Power Surge":68,"Anti-Freeze":69,"Time Warp":70,"Green Black Hole":71,"Roboactive":72,"Arcana":73,"Spellbound":74,"Chiroptera Venenata":75,"Poisoned Shadows":76,"Something Burning This Way Comes":77,"Hellfire":78,"Darkblaze":79,"Demonflame":80,"Bonzo The All-Gnawing":81,"Amaranthine":82,"Stare From Beyond":83,"The Ooze":84,"Ghastly Ghosts Jr":85,"Haunted Phantasm Jr":86,"Showstopper":3001,"Holy Grail":3003,"'72":3004,"Fountain of Delight":3005,"Screaming Tiger":3006,"Skill Gotten Gains":3007,"Midnight Whirlwind":3008,"Silver Cyclone":3009,"Mega Strike":3010,"Haunted Phantasm":3011,"Ghastly Ghosts":3012,"Frostbite":87,"Molten Mallard":88,"Morning Glory":89,"Death at Dusk":90};
 
 },{"./api":2,"./preferences":19}],21:[function(require,module,exports){
 exports.exec = function (code) {

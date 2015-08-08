@@ -4,7 +4,7 @@ var names = [];
 function Cache(name, pruneTime) {
     this.name = name;
     this.storage = JSON.parse(DataStore.getItem(name) || "{}");
-    this.pruneTime = pruneTime || 1000;
+    this.pruneTime = typeof pruneTime === 'number' ? pruneTime : 1000;
 
     names.push(name);
 }

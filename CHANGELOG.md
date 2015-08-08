@@ -1,3 +1,9 @@
+### v1.4.0
+Fixed random backgrounds not being cached.
+Fixed classifieds peek not working for killstreak items.
+Fixed pages with pricetags not working.
+Classifieds search scope (classifieds:,classified:,cl:) for sell orders.
+
 ### v1.3.5
 Removed scrap.tf and PPM from rep.tf display.
 Fixed many bugs introduced by the responsive design beta.
@@ -5,7 +11,7 @@ Fixed many bugs introduced by the responsive design beta.
 ### v1.3.4
 Fixed scm search for EUR, GBP, and RUB wallets. Warning added for unsupported wallets.
 Update notifications set to page load now also updates the notification count when any page is loaded.
-Mods should now have the correct menu action order.
+Site mods should now have the correct menu action order.
 /unusuals and /effects link buttons on all unusual item popovers.
 
 ### v1.3.3

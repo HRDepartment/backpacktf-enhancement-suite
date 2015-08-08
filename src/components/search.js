@@ -24,6 +24,24 @@ var appQualities = {
             "Haunted": ["#38F3AB", "#0bc67e"],
             "Collector's": ["#830000", "#560000"]
         },
+        qids: {
+			"normal": 0,
+			"genuine": 1,
+			"rarity2": 2,
+			"vintage": 3,
+			"rarity3": 4,
+			"unusual": 5,
+			"unique": 6,
+			"community": 7,
+			"valve": 8,
+			"self-made": 9,
+			"customized": 10,
+			"strange": 11,
+			"completed": 12,
+			"haunted": 13,
+			"collector's": 14,
+			"decorated weapon": 15
+		},
         defquality: "Unique"
     },
     570: {
@@ -87,6 +105,99 @@ function makeRequest(url, done, query) {
             done(json, query);
         }
     });
+}
+
+function parseClassifiedsTerm(term) {
+    var parts = term.split(','),
+        iname = parts[0],
+        attrs = (parts[1] || "").split('+'),
+        params = ['item=' + iname],
+        qid;
+
+    if (attrs[0]) params.push('quality=' + (isNaN(parseInt(attrs[0], 10)) ? (appQualities[440].qids[attrs[0].toLowerCase()] || 6) : attrs[0]));
+    if (attrs[1]) {
+        if (attrs[1].toLowerCase() === 'australium') params.push('australium=1');
+    }
+
+    if (parts[2] === '+') params.push('tradable=1'); else if (parts[2] === '-') params.push('tradable=0');
+    if (parts[3] === '+') params.push('craftable=1'); else if (parts[3] === '-') params.push('craftable=0');
+    return params.join('&');
+}
+
+function classifiedsRequest(term, query) {
+    if (req) req.abort();
+
+    req = GM_xmlhttpRequest({
+        method: "GET",
+        url: 'https://backpack.tf/classifieds?' + parseClassifiedsTerm(term),
+        onload: function (content) {
+            reqcache[query] = content.responseText;
+            setTimeout(function () { delete reqcache[query]; }, 1000 * 60 * 5);
+
+            Pricing.shared(function (e) {
+                ec = e;
+                ec.scope({step: EconCC.Disabled}, function () {
+                    processClassifieds(content.responseText);
+                });
+            });
+        }
+    });
+}
+
+function parseClassifieds(content) {
+    var html = $($.parseHTML(content));
+    return html.find('.item').map(function () {
+        var img = this.querySelector('.item-icon').style.backgroundImage;
+        this.dataset.imgurl = img.substring(img.indexOf('(') + 1, img.indexOf(')'));
+        this.dataset.title = this.getAttribute('title');
+        return this.dataset;
+    }).toArray();
+}
+
+function processClassifieds(content) {
+    var searchbox = $('.site-search-dropdown'),
+        html = '',
+        sections = {},
+        section, s, price, ecs, ecc;
+
+    searchbox.empty();
+    if (!content) {
+        searchbox.append('<li class="header">No matches</li>');
+    } else {
+        parseClassifieds(content).forEach(function (data, index) {
+            var colors = appQualities[440].qualities[data.qName],
+                colorStyle = 'border-color:' + colors[1] + ';background-color:' + colors[0],
+                stateClasses = (data.craftable === '1' ? '' : ' nocraft') + (data.tradable === '1' ? '' : ' notrade'),
+                sect = sections[data.title],
+                price = Pricing.fromListing(ec, data.listingPrice),
+                ptag = price.value + ';' + price.currency;
+
+            if (data.listingIntent !== '1') return; // seller
+            if (!sect) {
+                sect = sections[data.title] = {prices: {}, url: data.listingUrl, states: stateClasses, colors: colorStyle, img: data.imgurl};
+            }
+
+            sect.prices[ptag] = (sect.prices[ptag] || 0) + 1;
+        });
+
+        for (section in sections) {
+            s = sections[section];
+
+            html += '<li class="mini-price"><div class="item-mini"><img src="' + s.img + '"></div><div class="item-name">' + section + '</div><div class="buttons">';
+            for (price in s.prices) {
+                ecs = price.split(';');
+                ecc = {value: ec.convertFromBC(+ecs[0], ecs[1]), currency: ecs[1]};
+
+                html +=
+                '<a href="' + s.url + '" class="btn btn-xs classifieds-search-tooltip' + s.states + '" style="' + s.colors + '" title="' + ec.format(ecc, EconCC.Mode.Long) +'">'+
+                s.prices[price] + '× ' + ec.format(ecc, EconCC.Mode.Label) + '</a>'
+            }
+            html += '</div></li>';
+        }
+
+        searchbox.append(html);
+        Page.addTooltips($('.classifieds-search-tooltip'), '.site-search-dropdown');
+    }
 }
 
 function parseQuery(json, query) {
@@ -179,7 +290,7 @@ function processCustomResults(items) {
                 pricecc = cc.parse(i.price);
 
             if (!pricecc.matched) {
-                $('#navbar-search-results').append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
+                searchbox.append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
                 return;
             }
 
@@ -211,7 +322,7 @@ function processCustomResults(items) {
     }
 
     searchbox.html(results.html());
-    Page.addTooltips($('.scm-search-tooltip'), '#navbar-search-results');
+    Page.addTooltips($('.scm-search-tooltip'), '.site-search-dropdown');
 }
 
 function searchURL(appid, query) {
@@ -225,7 +336,15 @@ function processCustom(query) {
         search = parts.splice(1).join(':'),
         appid = appids[scope];
 
-    if (!search || !appid) return;
+    if (!search) return;
+
+    if (scope === 'classified' || scope === 'classifieds' || scope === 'cl') {
+        if (reqcache.hasOwnProperty(query)) processClassifieds(reqcache[query]);
+        else classifiedsRequest(search, query);
+        return;
+    }
+
+    if (!appid) return;
 
     if (reqcache[query]) processCustomResults(reqcache[query]);
     else makeRequest(searchURL(appid, search), parseQuery, query);

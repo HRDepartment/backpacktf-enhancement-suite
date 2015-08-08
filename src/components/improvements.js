@@ -116,7 +116,7 @@ function global() {
 }
 
 function updateWallpaperCache(url, then) {
-    var wallcache = new Cache("bes-cache-wallpaper");
+    var wallcache = new Cache("bes-cache-wallpaper", 0);
 
     if (wallcache.get("url").value !== url) {
         GM_xmlhttpRequest({

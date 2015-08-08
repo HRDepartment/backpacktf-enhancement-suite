@@ -89,6 +89,10 @@ function peekload(html) {
         $("#classifieds-buyers").html(buyers);
     }
 
+    if (!sellers.length && buyers.length) {
+        $ppb.append("<p>No buy or sell orders for this item.</p>");
+    }
+
     clones = $('.classifieds-clone');
     if (clones.length) {
         Page.addItemPopovers(clones, $ppb);
@@ -106,25 +110,11 @@ function peekload(html) {
 }
 
 function peek(e) {
-    var item = $('.item'),
-        name, url;
-
     e.preventDefault();
-    name = item.data('name');
-    if (item.data('australium')) {
-        name = name.substring(11);
-    }
-    url = '/classifieds/?item=' + name + '&quality=' + item.data('quality') + '&tradable=' + item.data('tradable') + '&craftable=' + item.data('craftable');
-    if (item.data('australium')) {
-        url += '&australium=1';
-    }
-    if (item.data('crate')) {
-        url += '&numeric=crate&comparison=eq&value=' + item.data('crate');
-    }
 
     $.ajax({
         method: "GET",
-        url: url,
+        url: $('.item').data('listing-url'),
         dataType: "html"
     }).success(peekload);
 }
@@ -282,10 +272,10 @@ function global() {
 function load() {
     var pathname = location.pathname;
 
-    if (pathname.match(/\/classifieds\/buy\/(?:.*)\/(?:.*)\/(?:.*)\/(?:.*)(?:\/?)(?:.*?)/)) buy();
-    if (pathname.match(/\/classifieds\/relist\/(?:.*)/)) buy();
-    if (pathname.match(/\/classifieds\/sell\/(?:.*)/)) sell();
-    if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
+         if (pathname.match(/\/classifieds\/buy\/.{1,}\/.{1,}\/.{1,}\/.{1,}\/?.*/)) buy();
+    else if (pathname.match(/\/classifieds\/relist\/.{1,}/)) buy();
+    else if (pathname.match(/\/classifieds\/sell\/.{1,}/)) sell();
+    else if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
     global();
 }
 
