@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.0
+// @version      1.4.1
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -88,7 +88,7 @@ Page.addTooltips();
 $(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;
 
-},{"./api":2,"./components/changes":5,"./components/classifieds":6,"./components/dupes":7,"./components/improvements":8,"./components/prefs":9,"./components/pricetags":10,"./components/quicklist":11,"./components/refresh":12,"./components/reptf":13,"./components/search":14,"./components/users":15,"./menu-actions":17,"./page":18,"./preferences":19}],2:[function(require,module,exports){
+},{"./api":2,"./components/changes":5,"./components/classifieds":6,"./components/dupes":7,"./components/improvements":8,"./components/prefs":9,"./components/pricetags":10,"./components/quicklist":11,"./components/refresh":12,"./components/reptf":13,"./components/search":14,"./components/users":18,"./menu-actions":20,"./page":21,"./preferences":22}],2:[function(require,module,exports){
 var Page = require('./page'),
     DataStore = require('./datastore'),
     Cache = require('./cache');
@@ -305,7 +305,7 @@ exports.IGetUserListings = function (steamid, callback, args) {
     }, callback, args);
 };
 
-},{"./cache":3,"./datastore":16,"./page":18}],3:[function(require,module,exports){
+},{"./cache":3,"./datastore":19,"./page":21}],3:[function(require,module,exports){
 var DataStore = require('./datastore');
 var names = [];
 
@@ -368,7 +368,7 @@ Cache.prototype.prune = function () {
 module.exports = Cache;
 module.exports.names = names;
 
-},{"./datastore":16}],4:[function(require,module,exports){
+},{"./datastore":19}],4:[function(require,module,exports){
 // http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP
 var Cache = require('../cache');
 
@@ -643,7 +643,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":17,"../page":18,"../preferences":19,"../pricing":20}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":20,"../page":21,"../preferences":22,"../pricing":23}],6:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
@@ -927,7 +927,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":17,"../page":18,"../preferences":19,"../pricing":20,"../script":21,"./pricetags":10}],7:[function(require,module,exports){
+},{"../api":2,"../menu-actions":20,"../page":21,"../preferences":22,"../pricing":23,"../script":24,"./pricetags":10}],7:[function(require,module,exports){
 var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
@@ -1046,7 +1046,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":17,"../page":18,"../script":21}],8:[function(require,module,exports){
+},{"../menu-actions":20,"../page":21,"../script":24}],8:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Script = require('../script'),
     Pricing = require('../pricing'),
@@ -1251,7 +1251,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":18,"../preferences":19,"../pricing":20,"../script":21}],9:[function(require,module,exports){
+},{"../cache":3,"../page":21,"../preferences":22,"../pricing":23,"../script":24}],9:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
@@ -1589,7 +1589,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../datastore":16,"../page":18,"../preferences":19,"./quicklist":11}],10:[function(require,module,exports){
+},{"../cache":3,"../datastore":19,"../page":21,"../preferences":22,"./quicklist":11}],10:[function(require,module,exports){
 var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
@@ -1721,7 +1721,7 @@ module.exports.setupInst = setupInst;
 module.exports.applyTagsToItems = applyTagsToItems;
 module.exports.enabled = enabled;
 
-},{"../page":18,"../preferences":19,"../pricing":20,"../script":21}],11:[function(require,module,exports){
+},{"../page":21,"../preferences":22,"../pricing":23,"../script":24}],11:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     DataStore = require('../datastore'),
@@ -2063,7 +2063,7 @@ function load() {
 module.exports = load;
 module.exports.modifyQuicklists = modifyQuicklists;
 
-},{"../datastore":16,"../page":18,"../preferences":19,"../script":21}],12:[function(require,module,exports){
+},{"../datastore":19,"../page":21,"../preferences":22,"../script":24}],12:[function(require,module,exports){
 var MenuActions = require('../menu-actions');
 var Script = require('../script');
 
@@ -2163,7 +2163,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":17,"../script":21}],13:[function(require,module,exports){
+},{"../menu-actions":20,"../script":24}],13:[function(require,module,exports){
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -2350,11 +2350,8 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":18,"../script":21}],14:[function(require,module,exports){
-var Script = require('../script'),
-    Pricing = require('../pricing'),
-    CC = require('./cc'),
-    Page = require('../page');
+},{"../cache":3,"../page":21,"../script":24}],14:[function(require,module,exports){
+var Script = require('../script');
 
 // function (rgb) { return ((parseInt(rgb.substr(0, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(2, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(4, 2), 16) - 45).toString(16)).toUpperCase(); }
 var appQualities = {
@@ -2437,37 +2434,128 @@ var appQualities = {
     }
 };
 
-var descids = {"Team Fortress 2": 440, "Counter-Strike: Global Offensive": 730, "Dota 2": 570};
-var appids = {},
-    reqcache = {},
-    req, ec, cc;
+var appnames = {"Team Fortress 2": 440, "Counter-Strike: Global Offensive": 730, "Dota 2": 570};
+var appids = {};
 
 appids.tf = appids.tf2 = 440;
 appids.cs = appids.csgo = appids.go = 730;
 appids.dota = appids.dota2 = appids.dt = appids.dt2 = 570;
 appids.scm = appids.market = appids.steam = 1;
 
-function makeRequest(url, done, query) {
-    if (req) req.abort();
+var Search = {
+    _req: null,
+    _reqcache: {},
 
-    req = GM_xmlhttpRequest({
-        method: "GET",
-        url: url,
-        onload: function (content) {
-            var json = JSON.parse(content.responseText);
-            done(json, query);
+    scopes: {},
+    apps: {
+        ids: appids,
+        qualities: appQualities,
+        names: appnames
+    },
+
+    request: function (attrs, then) {
+        if (this._req) this._req.abort();
+
+        if (typeof then === "function") {
+            attrs.onload = function (content) {
+                if (attrs.query) {
+                    Search.cache(attrs.query, content.responseText);
+                }
+                then(content.responseText);
+            };
+        }
+
+        this._req = GM_xmlhttpRequest(attrs);
+    },
+    cache: function (query, content) {
+        var q = this._reqcache;
+
+        if (arguments.length === 1) {
+            return q[query];
+        }
+
+        if (this._reqcache.hasOwnProperty(query)) {
+            return q[query];
+        }
+
+        q[query] = content;
+        setTimeout(function () { delete q[query]; }, 1000 * 60 * 5);
+    },
+    // o{fn load; fn render}
+    register: function (scope, o) {
+        if (!Array.isArray(scope)) scope = [scope];
+
+        scope.forEach(function (name) {
+            Search.scopes[name] = o;
+        });
+    },
+    include: function (o) {
+        o.register(Search);
+    },
+};
+
+function processCustom(query) {
+    var parts = query.split(':'),
+        scope = parts[0],
+        search = parts.splice(1).join(':'),
+        handlers = Search.scopes[scope],
+        cache = Search.cache(query);
+
+    if (!search || !handlers) return;
+    if (cache) {
+        handlers.render(cache);
+    } else {
+        handlers.load(query, scope, search);
+    }
+}
+
+function checkCustom(query) {
+    return query.split(':').length >= 2;
+}
+
+function addEventListeners() {
+    var inst = unsafeWindow.$('#navbar-search').data('instance');
+
+    Script.exec('$("#navbar-search").off("keyup");');
+
+    $('#navbar-search').keyup(function() {
+        var query = $(this).val().trim();
+        if (inst.lastQuery !== query) {
+            clearTimeout(inst.timer);
+            inst.timer = setTimeout(function () {
+                if (checkCustom(query)) processCustom(query);
+                else inst.processSearch();
+            }, 350);
+            inst.lastQuery = query;
         }
     });
 }
 
-function parseClassifiedsTerm(term) {
+function loadScopes() {
+    Search.include(require('./searchscopes/scm'));
+    Search.include(require('./searchscopes/classifieds'));
+    Search.include(require('./searchscopes/unusuals'));
+}
+
+function load() {
+    loadScopes();
+    addEventListeners();
+}
+
+module.exports = load;
+
+},{"../script":24,"./searchscopes/classifieds":15,"./searchscopes/scm":16,"./searchscopes/unusuals":17}],15:[function(require,module,exports){
+var Pricing = require('../../pricing'),
+    Page = require('../../page');
+var Search, ec;
+
+function parseTerm(term) {
     var parts = term.split(','),
         iname = parts[0],
         attrs = (parts[1] || "").split('+'),
-        params = ['item=' + iname],
-        qid;
+        params = ['item=' + iname];
 
-    if (attrs[0]) params.push('quality=' + (isNaN(parseInt(attrs[0], 10)) ? (appQualities[440].qids[attrs[0].toLowerCase()] || 6) : attrs[0]));
+    if (attrs[0]) params.push('quality=' + (isNaN(parseInt(attrs[0], 10)) ? (Search.apps.qualities[440].qids[attrs[0].toLowerCase()] || 6) : attrs[0]));
     if (attrs[1]) {
         if (attrs[1].toLowerCase() === 'australium') params.push('australium=1');
     }
@@ -2477,37 +2565,28 @@ function parseClassifiedsTerm(term) {
     return params.join('&');
 }
 
-function classifiedsRequest(term, query) {
-    if (req) req.abort();
-
-    req = GM_xmlhttpRequest({
-        method: "GET",
-        url: 'https://backpack.tf/classifieds?' + parseClassifiedsTerm(term),
-        onload: function (content) {
-            reqcache[query] = content.responseText;
-            setTimeout(function () { delete reqcache[query]; }, 1000 * 60 * 5);
-
-            Pricing.shared(function (e) {
-                ec = e;
-                ec.scope({step: EconCC.Disabled}, function () {
-                    processClassifieds(content.responseText);
-                });
+function request(query, scope, search) {
+    Search.request({url: 'https://backpack.tf/classifieds?' + parseTerm(search), method: "GET", query: query}, function (response) {
+        Pricing.shared(function (e) {
+            ec = e;
+            ec.scope({step: EconCC.Disabled}, function () {
+                render(response);
             });
-        }
+        });
     });
 }
 
-function parseClassifieds(content) {
+function parse(content) {
     var html = $($.parseHTML(content));
     return html.find('.item').map(function () {
         var img = this.querySelector('.item-icon').style.backgroundImage;
         this.dataset.imgurl = img.substring(img.indexOf('(') + 1, img.indexOf(')'));
         this.dataset.title = this.getAttribute('title');
-        return this.dataset;
+        return JSON.parse(JSON.stringify(this.dataset));
     }).toArray();
 }
 
-function processClassifieds(content) {
+function render(content) {
     var searchbox = $('.site-search-dropdown'),
         html = '',
         sections = {},
@@ -2517,8 +2596,8 @@ function processClassifieds(content) {
     if (!content) {
         searchbox.append('<li class="header">No matches</li>');
     } else {
-        parseClassifieds(content).forEach(function (data, index) {
-            var colors = appQualities[440].qualities[data.qName],
+        parse(content).forEach(function (data) {
+            var colors = Search.apps.qualities[440].qualities[data.qName],
                 colorStyle = 'border-color:' + colors[1] + ';background-color:' + colors[0],
                 stateClasses = (data.craftable === '1' ? '' : ' nocraft') + (data.tradable === '1' ? '' : ' notrade'),
                 sect = sections[data.title],
@@ -2543,7 +2622,7 @@ function processClassifieds(content) {
 
                 html +=
                 '<a href="' + s.url + '" class="btn btn-xs classifieds-search-tooltip' + s.states + '" style="' + s.colors + '" title="' + ec.format(ecc, EconCC.Mode.Long) +'">'+
-                s.prices[price] + '× ' + ec.format(ecc, EconCC.Mode.Label) + '</a>'
+                s.prices[price] + '× ' + ec.format(ecc, EconCC.Mode.Label) + '</a>';
             }
             html += '</div></li>';
         }
@@ -2553,15 +2632,33 @@ function processClassifieds(content) {
     }
 }
 
-function parseQuery(json, query) {
-    var html, items;
+exports.register = function (s) {
+    s.register(["classifieds", "classified", "cl", "c"], {load: request, render: render});
+};
+
+},{"../../page":21,"../../pricing":23}],16:[function(require,module,exports){
+var Pricing = require('../../pricing'),
+    CC = require('../cc'),
+    Page = require('../../page');
+var Search, ec, cc;
+
+function requestQuery(query, scope, search) {
+    var appid = Search.apps.ids[scope];
+
+    if (!appid) return;
+    Search.request({query: query, url: searchURL(appid, search), method: "GET"}, parseQuery);
+}
+
+function parseQuery(response) {
+    var json = JSON.parse(response),
+        items = [],
+        html;
 
     if (!json.total_count) {
         return processCustomResults(false);
     }
 
     html = $($.parseHTML(json.results_html));
-    items = [];
 
     html.filter('.market_listing_row_link').each(function () {
         var $this = $(this);
@@ -2575,11 +2672,6 @@ function parseQuery(json, query) {
             description: $this.find('.market_listing_game_name').text()
         });
     });
-
-    if (query) {
-        reqcache[query] = items;
-        setTimeout(function () { reqcache[query] = null; }, 1000 * 60 * 5);
-    }
 
     if (cc) {
         processCustomResults(items);
@@ -2595,7 +2687,7 @@ function parseQuery(json, query) {
 }
 
 function styleGame(iname, appid) {
-    var qualities = appQualities[appid],
+    var qualities = Search.apps.qualities[appid],
         q, qname, qreg, i;
 
     if (!appid || !qualities) return {name: iname};
@@ -2637,7 +2729,7 @@ function processCustomResults(items) {
             var element = $('<li class="mini-suggestion">'), // for proper styles
                 links = $('<div class="buttons">'),
                 desc = i.description,
-                descid = descids[desc],
+                descid = Search.apps.names[desc],
                 styl = styleGame(i.name, descid),
                 name = styl.name,
                 pricecc = cc.parse(i.price);
@@ -2683,55 +2775,83 @@ function searchURL(appid, query) {
         '&currency=1&start=0&count=6';
 }
 
-function processCustom(query) {
-    var parts = query.split(':'),
-        scope = parts[0],
-        search = parts.splice(1).join(':'),
-        appid = appids[scope];
+exports.register = function (s) {
+    var names = [],
+        id;
 
-    if (!search) return;
+    Search = s;
 
-    if (scope === 'classified' || scope === 'classifieds' || scope === 'cl') {
-        if (reqcache.hasOwnProperty(query)) processClassifieds(reqcache[query]);
-        else classifiedsRequest(search, query);
-        return;
+    for (id in Search.apps.ids) {
+        names.push(id);
     }
 
-    if (!appid) return;
+    s.register(names, {load: requestQuery, render: parseQuery});
+};
 
-    if (reqcache[query]) processCustomResults(reqcache[query]);
-    else makeRequest(searchURL(appid, search), parseQuery, query);
-}
+},{"../../page":21,"../../pricing":23,"../cc":4}],17:[function(require,module,exports){
+var Search, unusualPage;
 
-function checkCustom(query) {
-    return query.split(':').length >= 2;
-}
+function request(query, scope, search) {
+    if (unusualPage) return render(unusualPage, search);
 
-function addEventListeners() {
-    var inst = unsafeWindow.$('#navbar-search').data('instance');
-
-    Script.exec('$("#navbar-search").off("keyup");');
-
-    $('#navbar-search').keyup(function() {
-        var query = $(this).val().trim();
-        if (inst.lastQuery !== query) {
-            clearTimeout(inst.timer);
-            inst.timer = setTimeout(function () {
-                if (checkCustom(query)) processCustom(query);
-                else inst.processSearch();
-            }, 350);
-            inst.lastQuery = query;
-        }
+    Search.request({url: 'https://backpack.tf/unusuals', method: "GET"}, function (response) {
+        render(unusualPage = parse(response), search);
     });
 }
 
-function load() {
-    addEventListeners();
+function parse(content) {
+    var html = $($.parseHTML(content));
+    return html.find('.item').map(function () {
+        var img = this.querySelector('.item-icon').style.backgroundImage;
+        this.dataset.imgurl = img.substring(img.indexOf('(') + 1, img.indexOf(')'));
+        this.dataset.avg = this.querySelector('.equipped').innerText;
+        return JSON.parse(JSON.stringify(this.dataset));  // force document garbage collection, saves ~15mb of ram
+    }).toArray();
 }
 
-module.exports = load;
+function render(unusuals, search) {
+    var searchbox = $('.site-search-dropdown'),
+        regex = new RegExp(search, "i"),
+        html = '',
+        matches = [],
+        data, i;
 
-},{"../page":18,"../pricing":20,"../script":21,"./cc":4}],15:[function(require,module,exports){
+    searchbox.empty();
+    for (i = 0; i < unusuals.length; i += 1) {
+        data = unusuals[i];
+        if (regex.test(data.name)) {
+            matches.push(data);
+
+            if (matches.length === 10) break;
+        }
+    }
+    
+    if (!matches.length) {
+        return searchbox.append('<li class="header">No matches</li>');
+    }
+
+    matches.sort(function (a, b) {
+        return +b.price - +a.price;
+    }).forEach(function (data) {
+        var colors = Search.apps.qualities[440].qualities[data.qName],
+            colorStyle = 'border-color:' + colors[1] + ';background-color:' + colors[0];
+
+        html +=
+        '<li class="mini-price"><div class="item-mini"><img src="' + data.imgurl + '"></div><div class="item-name">' + data.name + '</div><div class="buttons">'+
+        '<a href="/unusuals/' + data.name + '" class="btn btn-xs" style="' + colorStyle + '">' + data.avg + '</a>'+
+        '<a href="' + data.listingUrl + '" class="btn btn-xs" style="' + colorStyle + '">Classifieds</a>'+
+        '</div></li>';
+    });
+
+    searchbox.append(html);
+}
+
+exports.register = function (s) {
+    Search = s;
+    s.register(["unusuals", "unusual", "u"], {load: request, render: render});
+};
+
+},{}],18:[function(require,module,exports){
 var Page = require('../page');
 
 var BadgeSelfMade = {
@@ -2803,7 +2923,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":18}],16:[function(require,module,exports){
+},{"../page":21}],19:[function(require,module,exports){
 exports.setItem = function (name, value) {
     return GM_setValue(name, value);
 };
@@ -2825,7 +2945,7 @@ exports.removeItem = function (name) {
     return GM_deleteValue(name);
 };
 
-},{}],17:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var Page = require('./page');
 var actions = [];
 
@@ -2860,7 +2980,7 @@ exports.applyActions = function () {
     actions = [];
 };
 
-},{"./page":18}],18:[function(require,module,exports){
+},{"./page":21}],21:[function(require,module,exports){
 var Script = require('./script');
 
 var nonNumerical = /\D/g;
@@ -3040,7 +3160,7 @@ exports.bp = function () { return unsafeWindow.backpack; }
 
 exports.SUITE_VERSION = GM_info.script.version;
 
-},{"./script":21}],19:[function(require,module,exports){
+},{"./script":24}],22:[function(require,module,exports){
 var DataStore = require('./datastore');
 var preferences = JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
 
@@ -3119,7 +3239,7 @@ exports.applyPrefs = function (prefs) {
     return this;
 };
 
-},{"./datastore":16}],20:[function(require,module,exports){
+},{"./datastore":19}],23:[function(require,module,exports){
 var Prefs = require('./preferences'),
     API = require('./api'),
     ec, cur;
@@ -3191,7 +3311,7 @@ exports.fromBackpack = function (ec, price) {
     return {value: ec.convertToBC(val), currency: val.currency};
 };
 
-},{"./api":2,"./preferences":19}],21:[function(require,module,exports){
+},{"./api":2,"./preferences":22}],24:[function(require,module,exports){
 exports.exec = function (code) {
     var scr = document.createElement('script'),
         elem = (document.body || document.head || document.documentElement);

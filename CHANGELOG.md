@@ -1,8 +1,11 @@
+### v1.4.1
+Unusual search scope (inline /unusuals) - unusuals:,unusual:,u:
+
 ### v1.4.0
 Fixed random backgrounds not being cached.
 Fixed classifieds peek not working for killstreak items.
 Fixed pages with pricetags not working.
-Classifieds search scope (classifieds:,classified:,cl:) for sell orders.
+Classifieds search scope (classifieds:,classified:,cl:,c:) for sell orders.
 
 ### v1.3.5
 Removed scrap.tf and PPM from rep.tf display.
