@@ -1,3 +1,7 @@
+### v1.4.2
+Disable third party pricing option.
+Fixed rep.tf integration.
+
 ### v1.4.1
 Unusual search scope (inline /unusuals) - unusuals:,unusual:,u:
 

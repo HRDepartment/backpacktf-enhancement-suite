@@ -41,7 +41,8 @@ Prefs.defaults({
         replacewalls: true
     },
     other: {
-        originalkeys: false
+        originalkeys: false,
+        thirdpartyprices: true
     }
 });
 

@@ -5,7 +5,7 @@ var Script = require('../script'),
 var bans = [],
     bansShown = false,
     cachePruneTime = 60 * 30 * 1000, // 30 minutes (in ms)
-    banIssuers = ["steamBans", "opBans", "stfBans", "bzBans", "ppmBans", "bbgBans", "tf2tBans", "bptfBans", "srBans", "mctBans"],
+    banIssuers = ["steamBans", "opBans", "stfBans", "bzBans", "ppmBans", "bbgBans", "tf2tBans", "bptfBans", "srBans"],
     reptfSuccess = true,
     steamid, repCache;
 
@@ -74,7 +74,6 @@ function addIssuers() {
     //spinner("PPM");
     // Uncomment to enable
     //spinner("TF2-Trader");
-    //spinner("MCT");
     //spinner("BBG");
     $('.community-statii .stats li').last().after($(groups.join("")));
 }
@@ -96,6 +95,7 @@ function compactResponse(json) {
     var compact = {success: json.success};
 
     banIssuers.forEach(function (issuer) {
+        if (!json[issuer]) return;
         compact[issuer] = {banned: json[issuer].banned, message: json[issuer].message};
     });
 
@@ -106,6 +106,7 @@ function updateCache() {
     GM_xmlhttpRequest({
         method: "POST",
         url: "http://rep.tf/api/bans?str=" + steamid,
+        headers: {Referer: 'http://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest' },
         onload: function (resp) {
             var json;
 
@@ -162,7 +163,6 @@ function showBans(json) {
     //ban("Scrap.tf", json.stfBans);
     //ban("PPM", json.ppmBans);
     //ban("TF2-Trader", json.tf2tBans);
-    //ban("MCT", json.mctBans);
     //ban("BBG", json.bbgBans);
 
     addRepTooltips();

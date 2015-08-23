@@ -72,6 +72,25 @@ function addUnusualDetailsButtons() {
                 'window.createDetails = ' + createDetails + ';');
 }
 
+function thirdPartyPrices() {
+    if (Prefs.pref('other', 'thirdpartyprices')) return;
+
+    function createDetails(item) {
+        var statsName = item.data('converted-from') ? item.data('converted-from') : item.data('name');
+        var friendlyUrl = '/' + item.data('q-name') + '/' + encodeURIComponent(statsName) + '/' + (item.data('tradable') == 1 ? "Tradable" : "Non-Tradable") + '/' + (item.data('craftable') == 1 ? "Craftable" : "Non-Craftable");
+
+        if (item.data('priceindex') && item.data('priceindex') !== 0) {
+            friendlyUrl += '/' + item.data('priceindex');
+        }
+
+        window.price_cache[friendlyUrl] = {};
+        return window.tpp_createDetails(item);
+    }
+
+    Script.exec('var tpp_createDetails = window.createDetails;'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
 function global() {
     var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -113,6 +132,7 @@ function global() {
 
     if (Page.isBackpack()) backpackHandler();
     addUnusualDetailsButtons();
+    thirdPartyPrices();
 }
 
 function updateWallpaperCache(url, then) {

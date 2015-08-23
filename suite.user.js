@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.1
+// @version      1.4.2
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -61,7 +61,8 @@ Prefs.defaults({
         replacewalls: true
     },
     other: {
-        originalkeys: false
+        originalkeys: false,
+        thirdpartyprices: true
     }
 });
 
@@ -1121,6 +1122,25 @@ function addUnusualDetailsButtons() {
                 'window.createDetails = ' + createDetails + ';');
 }
 
+function thirdPartyPrices() {
+    if (Prefs.pref('other', 'thirdpartyprices')) return;
+
+    function createDetails(item) {
+        var statsName = item.data('converted-from') ? item.data('converted-from') : item.data('name');
+        var friendlyUrl = '/' + item.data('q-name') + '/' + encodeURIComponent(statsName) + '/' + (item.data('tradable') == 1 ? "Tradable" : "Non-Tradable") + '/' + (item.data('craftable') == 1 ? "Craftable" : "Non-Craftable");
+
+        if (item.data('priceindex') && item.data('priceindex') !== 0) {
+            friendlyUrl += '/' + item.data('priceindex');
+        }
+
+        window.price_cache[friendlyUrl] = {};
+        return window.tpp_createDetails(item);
+    }
+
+    Script.exec('var tpp_createDetails = window.createDetails;'+
+                'window.createDetails = ' + createDetails + ';');
+}
+
 function global() {
     var account = $('.navbar-profile-nav .dropdown-menu a[href="/my/account"]'),
         help = $('.dropdown a[href="/help"]'),
@@ -1162,6 +1182,7 @@ function global() {
 
     if (Page.isBackpack()) backpackHandler();
     addUnusualDetailsButtons();
+    thirdPartyPrices();
 }
 
 function updateWallpaperCache(url, then) {
@@ -1479,7 +1500,10 @@ function addTabContent() {
             help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
 
             buttonsyn('Use original key icons', 'other', 'originalkeys'),
-            help("Shows the original key's icon (for converted event keys) full size.")
+            help("Shows the original key's icon (for converted event keys) full size."),
+
+            buttonsyn('Show third party pricing on items', 'other', 'thirdpartyprices'),
+            help("Whether third party pricing (trade.tf & tf2wh) should be shown on items. This is a website feature but can be disabled here for a performance improvement, as hovering over any item (even before it shows a popover) issues a request to the backpack.tf web servers.")
         ]),
 
         section('Advanced', [
@@ -2171,7 +2195,7 @@ var Script = require('../script'),
 var bans = [],
     bansShown = false,
     cachePruneTime = 60 * 30 * 1000, // 30 minutes (in ms)
-    banIssuers = ["steamBans", "opBans", "stfBans", "bzBans", "ppmBans", "bbgBans", "tf2tBans", "bptfBans", "srBans", "mctBans"],
+    banIssuers = ["steamBans", "opBans", "stfBans", "bzBans", "ppmBans", "bbgBans", "tf2tBans", "bptfBans", "srBans"],
     reptfSuccess = true,
     steamid, repCache;
 
@@ -2240,7 +2264,6 @@ function addIssuers() {
     //spinner("PPM");
     // Uncomment to enable
     //spinner("TF2-Trader");
-    //spinner("MCT");
     //spinner("BBG");
     $('.community-statii .stats li').last().after($(groups.join("")));
 }
@@ -2262,6 +2285,7 @@ function compactResponse(json) {
     var compact = {success: json.success};
 
     banIssuers.forEach(function (issuer) {
+        if (!json[issuer]) return;
         compact[issuer] = {banned: json[issuer].banned, message: json[issuer].message};
     });
 
@@ -2272,6 +2296,7 @@ function updateCache() {
     GM_xmlhttpRequest({
         method: "POST",
         url: "http://rep.tf/api/bans?str=" + steamid,
+        headers: {Referer: 'http://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest' },
         onload: function (resp) {
             var json;
 
@@ -2328,7 +2353,6 @@ function showBans(json) {
     //ban("Scrap.tf", json.stfBans);
     //ban("PPM", json.ppmBans);
     //ban("TF2-Trader", json.tf2tBans);
-    //ban("MCT", json.mctBans);
     //ban("BBG", json.bbgBans);
 
     addRepTooltips();

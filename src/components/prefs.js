@@ -225,7 +225,10 @@ function addTabContent() {
             help("Shows or hides the lotto on the main page. It can still be viewed at <a href='/lotto'>backpack.tf/lotto</a>."),
 
             buttonsyn('Use original key icons', 'other', 'originalkeys'),
-            help("Shows the original key's icon (for converted event keys) full size.")
+            help("Shows the original key's icon (for converted event keys) full size."),
+
+            buttonsyn('Show third party pricing on items', 'other', 'thirdpartyprices'),
+            help("Whether third party pricing (trade.tf & tf2wh) should be shown on items. This is a website feature but can be disabled here for a performance improvement, as hovering over any item (even before it shows a popover) issues a request to the backpack.tf web servers.")
         ]),
 
         section('Advanced', [
