@@ -15,6 +15,7 @@ Prefs.defaults({
     pricetags: {
         modmult: 0.5,
         tooltips: true,
+        correctscm: false
     },
     changes: {
         enabled: true,

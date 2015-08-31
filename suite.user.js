@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.2
+// @version      1.4.3
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -35,6 +35,7 @@ Prefs.defaults({
     pricetags: {
         modmult: 0.5,
         tooltips: true,
+        correctscm: false
     },
     changes: {
         enabled: true,
@@ -98,6 +99,7 @@ var callbacks = [];
 var queue = [], task = false;
 var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
+var SteamAPI = {};
 
 function keyFromPage(body) {
     var elem = (body.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
@@ -249,6 +251,25 @@ function whenAvailable(callback) {
     else callbacks.push(callback);
 }
 
+SteamAPI.market = {};
+SteamAPI.market.PriceOverview = function (callback, args) {
+    var url = "http://steamcommunity.com/market/priceoverview/?appid=" + args.appid + "&market_hash_name=" + encodeURIComponent(args.hashname),
+        hash;
+    if (args.currency) url += "&currency=" + args.currency;
+    hash = url.substr(48);
+
+    GM_xmlhttpRequest({
+        method: "GET",
+        url: url,
+        onload: function (resp) {
+            var json = JSON.parse(resp.responseText);
+
+            apicache.timeout(1000 * 60).set(hash, json).save();
+            callback(json);
+        }
+    });
+};
+
 exports.init = function () {
     if (!key) {
         loadKey();
@@ -305,6 +326,8 @@ exports.IGetUserListings = function (steamid, callback, args) {
         version: 2
     }, callback, args);
 };
+
+exports.stm = SteamAPI;
 
 },{"./cache":3,"./datastore":19,"./page":21}],3:[function(require,module,exports){
 var DataStore = require('./datastore');
@@ -1437,6 +1460,9 @@ function addTabContent() {
 
             buttonsyn('Tooltips', 'pricetags', 'tooltips'),
             help("Adds tooltips to items that are priced in keys."),
+
+            buttonsyn('Use correct SCM pricing', 'pricetags', 'correctscm'),
+            help("Modifies backpack.tf's SCM pricing client-side to use the Mann Co. Store's key price, instead of the calculated KEYUSD price (REFUSD * KEYREF)"),
         ]),
 
         section('Recent price changes in backpacks', [
@@ -1618,7 +1644,8 @@ var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
     Script = require('../script');
-var ec;
+var KEY_PRICE = 2.49;
+var ec, sec;
 
 function modmults(e) {
     var paint = e.dataset.paintPrice,
@@ -1641,68 +1668,122 @@ function modmults(e) {
 function setupInst(next) {
     if (ec) return next();
 
-    Pricing.ec(function (inst) {
+    Pricing.shared(function (inst) {
         ec = inst;
-        ec.currencies.metal.trailing = false;
-        next();
+
+        if (Prefs.pref('pricetags', 'correctscm')) {
+            Pricing.ec(function (ins) {
+                var refprice = KEY_PRICE / ins.convertToCurrency({value: 1, currency: 'keys'}, 'metal').value;
+                sec = ins;
+                sec.modify({
+                    currencies: {
+                        usd: {low: refprice, high: undefined, hidden: true},
+                        metal: {low: refprice, high: undefined, trailing: false}
+                    }
+                });
+                done();
+            });
+        } else done();
+
+        function done() {
+            ec.scope({currencies: {metal: {trailing: false}}}, next);
+        }
     });
 }
 
 function applyTagsToItems(items) {
     var modmult = Prefs.pref('pricetags', 'modmult'),
         tooltips = Prefs.pref('pricetags', 'tooltips'),
+        correctscm = Prefs.pref('pricetags', 'correctscm'),
         pricedef = Pricing.default(),
         clear = false;
 
     items.each(function () {
         var $this = $(this),
-            listing = $this.attr('data-listing-steamid'),
-            price = listing ? Pricing.fromListing(ec, $this.attr('data-listing-price')) : Pricing.fromBackpack(ec, $this.attr('data-p-bptf')),
-            value = price.value,
-            currency = price.currency,
+            ds = this.dataset,
+            di = ds.defindex,
+            listing = ds.listingSteamid,
+            scmPrice = !!ds.pScmAll && !ds.pBptfAll && !listing,
             eq = $this.find('.equipped'),
+            iprice = ds.pBptf || ds.pScm,
             mults = 0,
             s = {},
+            inst = ec,
             f, o;
+
+        if (!iprice) return;
+
+        var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
+            value = price.value,
+            currency = price.currency,
+            scmprice, scmvalue, scmcurrency, v, vc;
+
+        if (correctscm && ds.pScm) {
+            scmprice = Pricing.fromBackpack(sec, ds.pScm);
+            scmvalue = scmprice.value;
+            scmcurrency = scmprice.currency;
+
+            if (ec.convertToBC(scmvalue, scmcurrency) > sec.currencies.keys.low) {
+                scmprice = sec.convertToCurrency(scmprice, 'keys');
+            } else {
+                scmprice = sec.convertToCurrency(scmprice, 'metal');
+            }
+
+            scmcurrency = scmprice.currency;
+            scmvalue = ec.convertToBC(scmprice.value, scmcurrency);
+            if (scmPrice) inst = sec;
+        }
+
+        if (correctscm && scmPrice) {
+            v = scmvalue;
+            vc = scmcurrency;
+        } else {
+            v = value;
+            vc = currency;
+        }
 
         if (!listing) {
             mults = modmults(this);
             if (mults !== 0) {
-                value += mults * modmult;
+                v += mults * modmult;
 
                 clear = true;
-                $this.attr('data-price', value);
+                ds.price = v;
             }
 
             if (mults || !pricedef) {
                 clear = true;
-                $this.attr('data-price', value);
+                ds.price = v;
             }
         }
 
-        value = ec.convertFromBC(value, currency);
+        v = inst.convertFromBC(v, vc);
+        if (value && currency) value = ec.convertFromBC(value, currency);
+        if (scmvalue) scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
 
-        o = {value: value || 0.001, currency: currency};
+        o = {value: v || 0.001, currency: vc};
 
         // Disable step for listings
         if (listing) s = {step: EconCC.Disabled};
-        else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
+        else if (inst.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         if (mults || !pricedef) {
-            ec.scope(s, function () {
-                var di = $this.attr('data-defindex');
-
+            inst.scope(s, function () {
                 // Exception for keys
-                if (di === '5021') f = ec.formatCurrency(o);
-                else f = ec.format(o, EconCC.Mode.Label);
+                if (di === '5021') f = inst.formatCurrency(o);
+                else f = inst.format(o, EconCC.Mode.Label);
             });
 
             eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
         }
 
+        if (correctscm && ds.pScmAll) {
+            ds.pScmAll = sec.format({value: scmvalue, currency: scmcurrency}, EconCC.Mode.Long).replace(' (', ', ').replace(')', '');
+        }
+
         if (tooltips && /key/.test(currency)) {
-            ec.scope(s, function () {
-                eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
+            inst.scope(s, function () {
+                eq.attr('title', inst.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
             });
         }
     });
@@ -1722,6 +1803,7 @@ function enabled() {
     return Page.appid() === 440 && (
         Prefs.pref('pricetags', 'modmult') !== 0.5 ||
         Prefs.pref('pricetags', 'tooltips') !== false ||
+        Prefs.pref('pricetags', 'correctscm') !== false ||
         !Pricing.default()
     );
 }
@@ -1731,7 +1813,7 @@ function load() {
 
     if (!enabled()) return;
 
-    items = $('.item[data-p-bptf-all]:not([data-vote])');
+    items = $('.item:not([data-vote])');
     if (!items.length) return;
 
     setupInst(function () {
@@ -2895,7 +2977,8 @@ var BadgeSupporter = {
 var users = {
     "76561198070299574": {badges: [BadgeSelfMade], color: '#028482'},
     "76561198039453751": {badges: [BadgeSupporter]},
-    "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'}
+    "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'},
+    "76561198107654171": {badges: [BadgeSupporter], color: '#0b1c37'},
 };
 
 function renderUserBadges(badges) {
@@ -3308,6 +3391,7 @@ exports.default = function () {
 };
 
 exports.fromListing = function (ec, price) {
+    if (typeof price !== 'string') return {value: 0, currency: null};
     var parts = price.split(', '),
         bc = 0,
         hv = 0,
@@ -3331,6 +3415,7 @@ exports.fromListing = function (ec, price) {
 };
 
 exports.fromBackpack = function (ec, price) {
+    if (typeof price !== 'string') return {value: 0, currency: null};
     var val = ec.parse(price);
     return {value: ec.convertToBC(val), currency: val.currency};
 };

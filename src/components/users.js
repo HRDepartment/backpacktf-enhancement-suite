@@ -17,7 +17,8 @@ var BadgeSupporter = {
 var users = {
     "76561198070299574": {badges: [BadgeSelfMade], color: '#028482'},
     "76561198039453751": {badges: [BadgeSupporter]},
-    "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'}
+    "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'},
+    "76561198107654171": {badges: [BadgeSupporter], color: '#0b1c37'},
 };
 
 function renderUserBadges(badges) {

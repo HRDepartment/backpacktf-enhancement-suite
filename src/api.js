@@ -6,6 +6,7 @@ var callbacks = [];
 var queue = [], task = false;
 var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
+var SteamAPI = {};
 
 function keyFromPage(body) {
     var elem = (body.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
@@ -157,6 +158,25 @@ function whenAvailable(callback) {
     else callbacks.push(callback);
 }
 
+SteamAPI.market = {};
+SteamAPI.market.PriceOverview = function (callback, args) {
+    var url = "http://steamcommunity.com/market/priceoverview/?appid=" + args.appid + "&market_hash_name=" + encodeURIComponent(args.hashname),
+        hash;
+    if (args.currency) url += "&currency=" + args.currency;
+    hash = url.substr(48);
+
+    GM_xmlhttpRequest({
+        method: "GET",
+        url: url,
+        onload: function (resp) {
+            var json = JSON.parse(resp.responseText);
+
+            apicache.timeout(1000 * 60).set(hash, json).save();
+            callback(json);
+        }
+    });
+};
+
 exports.init = function () {
     if (!key) {
         loadKey();
@@ -213,3 +233,5 @@ exports.IGetUserListings = function (steamid, callback, args) {
         version: 2
     }, callback, args);
 };
+
+exports.stm = SteamAPI;

@@ -1,3 +1,6 @@
+### v1.4.3
+Opt-in SCM price fix
+
 ### v1.4.2
 Disable third party pricing option.
 Fixed rep.tf integration.

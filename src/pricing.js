@@ -42,6 +42,7 @@ exports.default = function () {
 };
 
 exports.fromListing = function (ec, price) {
+    if (typeof price !== 'string') return {value: 0, currency: null};
     var parts = price.split(', '),
         bc = 0,
         hv = 0,
@@ -65,6 +66,7 @@ exports.fromListing = function (ec, price) {
 };
 
 exports.fromBackpack = function (ec, price) {
+    if (typeof price !== 'string') return {value: 0, currency: null};
     var val = ec.parse(price);
     return {value: ec.convertToBC(val), currency: val.currency};
 };
