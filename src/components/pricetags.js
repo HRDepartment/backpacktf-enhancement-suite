@@ -24,8 +24,6 @@ function modmults(e) {
 }
 
 function setupInst(next) {
-    if (ec) return next();
-
     Pricing.shared(function (inst) {
         ec = inst;
 
@@ -36,16 +34,12 @@ function setupInst(next) {
                 sec.modify({
                     currencies: {
                         usd: {low: refprice, high: undefined, hidden: true},
-                        metal: {low: refprice, high: undefined, trailing: false}
+                        metal: {low: refprice, high: undefined, trailing: EconCC.Disabled}
                     }
                 });
-                done();
+                next();
             });
-        } else done();
-
-        function done() {
-            ec.scope({currencies: {metal: {trailing: false}}}, next);
-        }
+        } else next();
     });
 }
 
@@ -61,13 +55,13 @@ function applyTagsToItems(items) {
             ds = this.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
-            scmPrice = !!ds.pScmAll && !ds.pBptfAll && !listing,
+            scmPrice = !listing && !ds.pBptfAll && !!ds.pScmAll,
             eq = $this.find('.equipped'),
             iprice = ds.pBptf || ds.pScm,
             mults = 0,
             s = {},
             inst = ec,
-            f, o;
+            o;
 
         if (!iprice) return;
 
@@ -125,14 +119,16 @@ function applyTagsToItems(items) {
         if (listing) s = {step: EconCC.Disabled};
         else if (inst.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
-        if (mults || !pricedef) {
+        if ((!scmPrice && (mults || !pricedef)) || (scmPrice && correctscm)) {
             inst.scope(s, function () {
+                var f;
+
                 // Exception for keys
                 if (di === '5021') f = inst.formatCurrency(o);
-                else f = inst.format(o, EconCC.Mode.Label);
-            });
+                else f = inst.format(o, EconCC.Mode.Label).replace('.00', '');
 
-            eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
+                eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
+            });
         }
 
         if (correctscm && ds.pScmAll) {
@@ -175,7 +171,9 @@ function load() {
     if (!items.length) return;
 
     setupInst(function () {
-        applyTagsToItems(items);
+        ec.scope({currencies: {metal: {trailing: EconCC.Disabled}}}, function () {
+            applyTagsToItems(items);
+        });
     });
 }
 

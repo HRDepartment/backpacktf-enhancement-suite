@@ -2,6 +2,8 @@ var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
 
+var IS_DUPE = /Refer to entries in the item history <strong>where the item ID is not chronological/;
+
 // Injected into the page
 function addDupeCheck() {
     function addDupeWarn(historybtn, dupe) {
@@ -10,7 +12,7 @@ function addDupeCheck() {
 
     function checkDuped(oid, btn) {
         $.get("/item/" + oid, function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            var dupe = IS_DUPE.test(html);
             window.dupeCache[oid] = dupe;
             window.addDupeWarn(btn, dupe);
         });
@@ -91,9 +93,9 @@ function bpDupeCheck() {
 
         if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
         $.get("/item/" + oid, function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            var dupe = IS_DUPE.test(html);
             unsafeWindow.dupeCache[oid] = dupe;
-            applyIcon();
+            applyIcon(dupe);
         });
     }());
 }

@@ -1,3 +1,6 @@
+### v1.4.4
+Fixed dupe-checking.
+
 ### v1.4.3
 Opt-in SCM price fix
 

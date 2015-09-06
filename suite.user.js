@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.3
+// @version      1.4.4
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -956,6 +956,8 @@ var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
 
+var IS_DUPE = /Refer to entries in the item history <strong>where the item ID is not chronological/;
+
 // Injected into the page
 function addDupeCheck() {
     function addDupeWarn(historybtn, dupe) {
@@ -964,7 +966,7 @@ function addDupeCheck() {
 
     function checkDuped(oid, btn) {
         $.get("/item/" + oid, function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            var dupe = IS_DUPE.test(html);
             window.dupeCache[oid] = dupe;
             window.addDupeWarn(btn, dupe);
         });
@@ -1045,9 +1047,9 @@ function bpDupeCheck() {
 
         if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
         $.get("/item/" + oid, function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            var dupe = IS_DUPE.test(html);
             unsafeWindow.dupeCache[oid] = dupe;
-            applyIcon();
+            applyIcon(dupe);
         });
     }());
 }
@@ -1666,8 +1668,6 @@ function modmults(e) {
 }
 
 function setupInst(next) {
-    if (ec) return next();
-
     Pricing.shared(function (inst) {
         ec = inst;
 
@@ -1678,16 +1678,12 @@ function setupInst(next) {
                 sec.modify({
                     currencies: {
                         usd: {low: refprice, high: undefined, hidden: true},
-                        metal: {low: refprice, high: undefined, trailing: false}
+                        metal: {low: refprice, high: undefined, trailing: EconCC.Disabled}
                     }
                 });
-                done();
+                next();
             });
-        } else done();
-
-        function done() {
-            ec.scope({currencies: {metal: {trailing: false}}}, next);
-        }
+        } else next();
     });
 }
 
@@ -1703,13 +1699,13 @@ function applyTagsToItems(items) {
             ds = this.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
-            scmPrice = !!ds.pScmAll && !ds.pBptfAll && !listing,
+            scmPrice = !listing && !ds.pBptfAll && !!ds.pScmAll,
             eq = $this.find('.equipped'),
             iprice = ds.pBptf || ds.pScm,
             mults = 0,
             s = {},
             inst = ec,
-            f, o;
+            o;
 
         if (!iprice) return;
 
@@ -1767,14 +1763,16 @@ function applyTagsToItems(items) {
         if (listing) s = {step: EconCC.Disabled};
         else if (inst.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
-        if (mults || !pricedef) {
+        if ((!scmPrice && (mults || !pricedef)) || (scmPrice && correctscm)) {
             inst.scope(s, function () {
+                var f;
+
                 // Exception for keys
                 if (di === '5021') f = inst.formatCurrency(o);
-                else f = inst.format(o, EconCC.Mode.Label);
-            });
+                else f = inst.format(o, EconCC.Mode.Label).replace('.00', '');
 
-            eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
+                eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
+            });
         }
 
         if (correctscm && ds.pScmAll) {
@@ -1817,7 +1815,9 @@ function load() {
     if (!items.length) return;
 
     setupInst(function () {
-        applyTagsToItems(items);
+        ec.scope({currencies: {metal: {trailing: EconCC.Disabled}}}, function () {
+            applyTagsToItems(items);
+        });
     });
 }
 
