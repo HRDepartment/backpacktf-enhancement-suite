@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.4
+// @version      1.4.5
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -637,7 +637,7 @@ function onMenuActionClick() {
         .append("<p><i>Showing price changes from the past " + ts.join(" and ") + "</i></p>")
         .append($("<div id='change-cloned' class='row'/>").append(elems));
 
-    unsafeWindow.modal("Recent Price Changes", container.html()); // Firefox support, .html()
+    Page.modal("Recent Price Changes", container.html()); // Firefox support, .html()
 
     clones = $('.change-clone'); // FF support
     Page.addItemPopovers(clones, $("#change-cloned"));
@@ -1535,6 +1535,10 @@ function addTabContent() {
         ]),
 
         section('Advanced', [
+            button('Import preferences', 'import-prefs'),
+            button('Export preferences', 'export-prefs'),
+            help('Import or export your preferences for use on other computers, browsers, etc.'),
+
             button('Reset preferences', 'reset-prefs'),
             help('Resets your preferences (including quicklists) to the default and reloades the page.'),
 
@@ -1550,6 +1554,8 @@ function addTabContent() {
     $('#modify-quicklists').click(Quicklist.modifyQuicklists);
     $('#clear-cache').click(clearCache);
     $('#reset-prefs').click(resetPrefs);
+    $('#import-prefs').click(importPrefs);
+    $('#export-prefs').click(exportPrefs);
 
     $('#bes').on('click.bs.button.data-api', '[data-toggle^="button"]', function (e) {
         var $btn = $(e.target);
@@ -1578,6 +1584,29 @@ function resetPrefs() {
     DataStore.removeItem("bes-preferences");
     DataStore.removeItem("bes-quicklists");
     location.reload();
+}
+
+function importPrefs() {
+    var html = '<p>Import your backpack.tf Enhancement Suite settings here. Only the format from the export dialog will work.</p><div class="row"><textarea id="import-prefs-json" class="form-control" style="height:170px;resize:vertical"></textarea></div>';
+    Page.modal("Import preferences", html, '<a class="btn btn-primary" id="import-prefs-btn">Import</a>');
+
+    $("#import-prefs-btn").click(function () {
+        var p = $("#import-prefs-json").val();
+        Page.hideModal();
+
+        try {
+            Prefs.saveToDS(JSON.parse(p));
+            location.reload();
+        } catch (ex) {
+            alert("The preferences you were trying to import are corrupted.");
+        }
+    });
+}
+
+function exportPrefs() {
+    var html = '<p>Store this code to import your preferences elsewhere.</p><div class="row"><textarea id="export-prefs-json" class="form-control" style="height:170px;resize:vertical"></textarea></div>';
+    Page.modal("Export preferences", html);
+    $("#export-prefs-json").val(JSON.stringify(Prefs.loadFromDS()));
 }
 
 function addHotlinking() {
@@ -2057,7 +2086,7 @@ function modifyQuicklists() {
     html += "</div>"+
         '<a class="btn btn-default ql-add-button">Add</a>';
 
-    unsafeWindow.modal("Modify Quicklist Presets", html, '<a class="btn btn-default btn-primary ql-save-button">Save</a>');
+    Page.modal("Modify Quicklist Presets", html, '<a class="btn btn-default btn-primary ql-save-button">Save</a>');
 
     $('.ql-save-button').click(function () {
         values = collectButtonValues().filter(function (v) {
@@ -2307,7 +2336,7 @@ function showBansModal() {
     });
     html += "</ul>";
 
-    unsafeWindow.modal("rep.tf bans", html);
+    Page.modal("rep.tf bans", html);
 }
 
 function addProfileButtons() {
@@ -2976,7 +3005,7 @@ var BadgeSupporter = {
 
 var users = {
     "76561198070299574": {badges: [BadgeSelfMade], color: '#028482'},
-    "76561198039453751": {badges: [BadgeSupporter]},
+    "76561198039453751": {badges: [BadgeSupporter], icon: {img: ['https://steamcdn-a.akamaihd.net/apps/440/icons/soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf.png', '/images/440/particles/14_94x94.png'], star: false}},
     "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'},
     "76561198107654171": {badges: [BadgeSupporter], color: '#0b1c37'},
 };
@@ -3009,6 +3038,24 @@ function changeUserColors(handle) {
     });
 }
 
+function modifyBelts(handle) {
+    handle.each(function () {
+        var id = this.dataset.id,
+            u = users[id],
+            icon, belt;
+
+        if (!u || !u.icon) return;
+        icon = u.icon;
+        belt = this.querySelector('.label-belt');
+
+        if (!belt) return;
+
+        icon.padding = icon.padding || 14;
+        icon.margin = icon.margin || -4;
+        belt.innerHTML = '<span style="background-image:' + icon.img.map(function (img) { return 'url(' + img + ')'; }).join(',') + ';background-size:contain;background-repeat:no-repeat;padding: ' + icon.padding + 'px;margin-left:' + icon.margin + 'px;margin-right:' + icon.margin + 'px;' + (icon.star !== false ? '' : 'color: transparent;') + '">★</span>';
+    });
+}
+
 function load() {
     var handle = Page.users(),
         user;
@@ -3017,6 +3064,8 @@ function load() {
     if (handle.length && location.pathname !== '/donate') {
         changeUserColors(handle);
     }
+
+    modifyBelts(handle);
 
     // User badges
     if (!Page.isProfile()) return;
@@ -3154,6 +3203,10 @@ getter('isIndexPage', 'indexpage');
 getter('ready', 'loaded');
 getter('users', 'handles');
 
+exports.modal = function () {
+    unsafeWindow.modal.apply(unsafeWindow, arguments);
+};
+
 exports.hideModal = function () {
     Script.exec('$("#active-modal").modal("hide");');
 };
@@ -3269,16 +3322,35 @@ exports.SUITE_VERSION = GM_info.script.version;
 
 },{"./script":24}],22:[function(require,module,exports){
 var DataStore = require('./datastore');
-var preferences = JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
+var preferences = loadFromDS();
 
 exports.dirty = false;
 exports.prefs = preferences;
-exports.enabled = function (feat) {
+
+exports.loadFromDS = loadFromDS;
+exports.saveToDS = saveToDS;
+exports.enabled = enabled;
+exports.pref = pref;
+exports.default = def;
+exports.defaults = defaults;
+exports.save = save;
+exports.applyPrefs = applyPrefs;
+
+function loadFromDS() {
+    return JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
+}
+
+function saveToDS(o) {
+    DataStore.setItem("bes-preferences", JSON.stringify(o));
+    return exports;
+}
+
+function enabled(feat) {
     var o = preferences.features[feat];
     return o ? o.enabled : false;
-};
+}
 
-exports.pref = function (feat, name, value) {
+function pref(feat, name, value) {
     var o = preferences.features[feat];
     if (!o) o = preferences.features[feat] = {};
 
@@ -3289,10 +3361,10 @@ exports.pref = function (feat, name, value) {
         exports.dirty = true;
     }
 
-    return this;
-};
+    return exports;
+}
 
-exports.default = function (feat, name, value) {
+function def(feat, name, value) {
     var o = preferences.features[feat];
 
     if (!o) o = preferences.features[feat] = {};
@@ -3301,10 +3373,10 @@ exports.default = function (feat, name, value) {
         exports.dirty = true;
     }
 
-    return this;
-};
+    return exports;
+}
 
-exports.defaults = function (defs) {
+function defaults(defs) {
     var feat, o, names, name, value;
 
     for (feat in defs) {
@@ -3324,15 +3396,15 @@ exports.defaults = function (defs) {
         }
     }
 
-    return this;
-};
+    return exports;
+}
 
-exports.save = function () {
+function save() {
     if (!exports.dirty) return;
     DataStore.setItem("bes-preferences", JSON.stringify(preferences));
-};
+}
 
-exports.applyPrefs = function (prefs) {
+function applyPrefs(prefs) {
     var feat, key, o;
 
     for (feat in prefs) {
@@ -3343,8 +3415,8 @@ exports.applyPrefs = function (prefs) {
     }
 
     exports.save();
-    return this;
-};
+    return exports;
+}
 
 },{"./datastore":19}],23:[function(require,module,exports){
 var Prefs = require('./preferences'),

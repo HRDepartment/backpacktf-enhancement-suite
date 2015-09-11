@@ -35,7 +35,7 @@ function showBansModal() {
     });
     html += "</ul>";
 
-    unsafeWindow.modal("rep.tf bans", html);
+    Page.modal("rep.tf bans", html);
 }
 
 function addProfileButtons() {

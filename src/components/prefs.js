@@ -235,6 +235,10 @@ function addTabContent() {
         ]),
 
         section('Advanced', [
+            button('Import preferences', 'import-prefs'),
+            button('Export preferences', 'export-prefs'),
+            help('Import or export your preferences for use on other computers, browsers, etc.'),
+
             button('Reset preferences', 'reset-prefs'),
             help('Resets your preferences (including quicklists) to the default and reloades the page.'),
 
@@ -250,6 +254,8 @@ function addTabContent() {
     $('#modify-quicklists').click(Quicklist.modifyQuicklists);
     $('#clear-cache').click(clearCache);
     $('#reset-prefs').click(resetPrefs);
+    $('#import-prefs').click(importPrefs);
+    $('#export-prefs').click(exportPrefs);
 
     $('#bes').on('click.bs.button.data-api', '[data-toggle^="button"]', function (e) {
         var $btn = $(e.target);
@@ -278,6 +284,29 @@ function resetPrefs() {
     DataStore.removeItem("bes-preferences");
     DataStore.removeItem("bes-quicklists");
     location.reload();
+}
+
+function importPrefs() {
+    var html = '<p>Import your backpack.tf Enhancement Suite settings here. Only the format from the export dialog will work.</p><div class="row"><textarea id="import-prefs-json" class="form-control" style="height:170px;resize:vertical"></textarea></div>';
+    Page.modal("Import preferences", html, '<a class="btn btn-primary" id="import-prefs-btn">Import</a>');
+
+    $("#import-prefs-btn").click(function () {
+        var p = $("#import-prefs-json").val();
+        Page.hideModal();
+
+        try {
+            Prefs.saveToDS(JSON.parse(p));
+            location.reload();
+        } catch (ex) {
+            alert("The preferences you were trying to import are corrupted.");
+        }
+    });
+}
+
+function exportPrefs() {
+    var html = '<p>Store this code to import your preferences elsewhere.</p><div class="row"><textarea id="export-prefs-json" class="form-control" style="height:170px;resize:vertical"></textarea></div>';
+    Page.modal("Export preferences", html);
+    $("#export-prefs-json").val(JSON.stringify(Prefs.loadFromDS()));
 }
 
 function addHotlinking() {

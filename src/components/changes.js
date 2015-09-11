@@ -158,7 +158,7 @@ function onMenuActionClick() {
         .append("<p><i>Showing price changes from the past " + ts.join(" and ") + "</i></p>")
         .append($("<div id='change-cloned' class='row'/>").append(elems));
 
-    unsafeWindow.modal("Recent Price Changes", container.html()); // Firefox support, .html()
+    Page.modal("Recent Price Changes", container.html()); // Firefox support, .html()
 
     clones = $('.change-clone'); // FF support
     Page.addItemPopovers(clones, $("#change-cloned"));

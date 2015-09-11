@@ -16,7 +16,7 @@ var BadgeSupporter = {
 
 var users = {
     "76561198070299574": {badges: [BadgeSelfMade], color: '#028482'},
-    "76561198039453751": {badges: [BadgeSupporter]},
+    "76561198039453751": {badges: [BadgeSupporter], icon: {img: ['https://steamcdn-a.akamaihd.net/apps/440/icons/soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf.png', '/images/440/particles/14_94x94.png'], star: false}},
     "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'},
     "76561198107654171": {badges: [BadgeSupporter], color: '#0b1c37'},
 };
@@ -49,6 +49,24 @@ function changeUserColors(handle) {
     });
 }
 
+function modifyBelts(handle) {
+    handle.each(function () {
+        var id = this.dataset.id,
+            u = users[id],
+            icon, belt;
+
+        if (!u || !u.icon) return;
+        icon = u.icon;
+        belt = this.querySelector('.label-belt');
+
+        if (!belt) return;
+
+        icon.padding = icon.padding || 14;
+        icon.margin = icon.margin || -4;
+        belt.innerHTML = '<span style="background-image:' + icon.img.map(function (img) { return 'url(' + img + ')'; }).join(',') + ';background-size:contain;background-repeat:no-repeat;padding: ' + icon.padding + 'px;margin-left:' + icon.margin + 'px;margin-right:' + icon.margin + 'px;' + (icon.star !== false ? '' : 'color: transparent;') + '">★</span>';
+    });
+}
+
 function load() {
     var handle = Page.users(),
         user;
@@ -57,6 +75,8 @@ function load() {
     if (handle.length && location.pathname !== '/donate') {
         changeUserColors(handle);
     }
+
+    modifyBelts(handle);
 
     // User badges
     if (!Page.isProfile()) return;

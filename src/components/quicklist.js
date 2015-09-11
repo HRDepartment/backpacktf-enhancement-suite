@@ -227,7 +227,7 @@ function modifyQuicklists() {
     html += "</div>"+
         '<a class="btn btn-default ql-add-button">Add</a>';
 
-    unsafeWindow.modal("Modify Quicklist Presets", html, '<a class="btn btn-default btn-primary ql-save-button">Save</a>');
+    Page.modal("Modify Quicklist Presets", html, '<a class="btn btn-default btn-primary ql-save-button">Save</a>');
 
     $('.ql-save-button').click(function () {
         values = collectButtonValues().filter(function (v) {

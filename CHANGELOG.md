@@ -1,3 +1,7 @@
+### v1.4.5
+Import/Export settings
+New supporter perk: Custom belts (see forum post)
+
 ### v1.4.4
 Fixed dupe-checking.
 
@@ -25,7 +29,7 @@ Fixed many bugs introduced by the responsive design beta.
 Fixed scm search for EUR, GBP, and RUB wallets. Warning added for unsupported wallets.
 Update notifications set to page load now also updates the notification count when any page is loaded.
 Site mods should now have the correct menu action order.
-/unusuals and /effects link buttons on all unusual item popovers.
+/unusuals and /effects links on all unusual item popovers.
 
 ### v1.3.3
 dota2 & csgo support fixes

@@ -64,6 +64,10 @@ getter('isIndexPage', 'indexpage');
 getter('ready', 'loaded');
 getter('users', 'handles');
 
+exports.modal = function () {
+    unsafeWindow.modal.apply(unsafeWindow, arguments);
+};
+
 exports.hideModal = function () {
     Script.exec('$("#active-modal").modal("hide");');
 };

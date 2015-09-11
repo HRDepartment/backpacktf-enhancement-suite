@@ -1,14 +1,33 @@
 var DataStore = require('./datastore');
-var preferences = JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
+var preferences = loadFromDS();
 
 exports.dirty = false;
 exports.prefs = preferences;
-exports.enabled = function (feat) {
+
+exports.loadFromDS = loadFromDS;
+exports.saveToDS = saveToDS;
+exports.enabled = enabled;
+exports.pref = pref;
+exports.default = def;
+exports.defaults = defaults;
+exports.save = save;
+exports.applyPrefs = applyPrefs;
+
+function loadFromDS() {
+    return JSON.parse(DataStore.getItem("bes-preferences") || '{"features": {}}');
+}
+
+function saveToDS(o) {
+    DataStore.setItem("bes-preferences", JSON.stringify(o));
+    return exports;
+}
+
+function enabled(feat) {
     var o = preferences.features[feat];
     return o ? o.enabled : false;
-};
+}
 
-exports.pref = function (feat, name, value) {
+function pref(feat, name, value) {
     var o = preferences.features[feat];
     if (!o) o = preferences.features[feat] = {};
 
@@ -19,10 +38,10 @@ exports.pref = function (feat, name, value) {
         exports.dirty = true;
     }
 
-    return this;
-};
+    return exports;
+}
 
-exports.default = function (feat, name, value) {
+function def(feat, name, value) {
     var o = preferences.features[feat];
 
     if (!o) o = preferences.features[feat] = {};
@@ -31,10 +50,10 @@ exports.default = function (feat, name, value) {
         exports.dirty = true;
     }
 
-    return this;
-};
+    return exports;
+}
 
-exports.defaults = function (defs) {
+function defaults(defs) {
     var feat, o, names, name, value;
 
     for (feat in defs) {
@@ -54,15 +73,15 @@ exports.defaults = function (defs) {
         }
     }
 
-    return this;
-};
+    return exports;
+}
 
-exports.save = function () {
+function save() {
     if (!exports.dirty) return;
     DataStore.setItem("bes-preferences", JSON.stringify(preferences));
-};
+}
 
-exports.applyPrefs = function (prefs) {
+function applyPrefs(prefs) {
     var feat, key, o;
 
     for (feat in prefs) {
@@ -73,5 +92,5 @@ exports.applyPrefs = function (prefs) {
     }
 
     exports.save();
-    return this;
-};
+    return exports;
+}
