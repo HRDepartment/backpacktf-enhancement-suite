@@ -35,6 +35,7 @@ var users = {
     "76561198068022595": {badges: [BadgeSupporter], color: '#f9d200'},
     "76561198107654171": {badges: [BadgeSupporter], color: '#0b1c37', icon: Starless('xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8])},
     "76561198067575136": {badges: [BadgeSupporter], icon: Starless('xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12])},
+    "76561198044195191": {badges: [BadgeSupporter], icon: Starless('fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -3])},
 };
 
 function renderUserBadges(badges) {
