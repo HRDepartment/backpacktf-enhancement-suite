@@ -43,6 +43,7 @@ var users = {
     "76561198044195191": {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
     "76561198056198948": {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
     "76561198067795713": {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
+    "76561197980709148": {badges: [1], color: '#A41408'}
 };
 
 function renderUserBadges(badges) {

@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.5.4
+// @version      1.4.5.5
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
