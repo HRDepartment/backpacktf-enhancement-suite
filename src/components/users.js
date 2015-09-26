@@ -15,6 +15,7 @@ var BadgeSupporter = {
 };
 
 var badgemap = [BadgeSelfMade, BadgeSupporter];
+var ID_PREFIX = "7656119";
 
 function iconinf(item, particle, margins) {
     var o = {
@@ -35,15 +36,16 @@ function iconinf(item, particle, margins) {
 }
 
 var users = {
-    "76561198070299574": {badges: [0], color: '#028482'},
-    "76561198039453751": {badges: [1], icon: ['soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf', 14, [-4, -4]]},
-    "76561198068022595": {badges: [1], color: '#f9d200'},
-    "76561198107654171": {badges: [1], color: '#0b1c37', icon: ['xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8]]},
-    "76561198067575136": {badges: [1], icon: ['xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12]]},
-    "76561198044195191": {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
-    "76561198056198948": {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
-    "76561198067795713": {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
-    "76561197980709148": {badges: [1], color: '#A41408'}
+    8070299574: {badges: [0], color: '#028482'},
+    8039453751: {badges: [1], icon: ['soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf', 14, [-4, -4]]},
+    8068022595: {badges: [1], color: '#f9d200'},
+    8107654171: {badges: [1], color: '#0b1c37', icon: ['xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8]]},
+    8067575136: {badges: [1], icon: ['xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12]]},
+    8044195191: {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
+    8056198948: {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
+    8067795713: {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
+    7980709148: {badges: [1], color: '#A41408'},
+    8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
 };
 
 function renderUserBadges(badges) {
@@ -66,8 +68,8 @@ function badgePopovers() {
 
 function changeUserColors(handle) {
     handle.each(function () {
-        var id = this.dataset.id,
-            u = users[id];
+        var id = this.dataset.id || "",
+            u = users[id.substr(ID_PREFIX.length)];
 
         if (!u || !u.color) return;
 
@@ -78,8 +80,8 @@ function changeUserColors(handle) {
 
 function modifyBelts(handle) {
     handle.each(function () {
-        var id = this.dataset.id,
-            u = users[id],
+        var id = this.dataset.id || "",
+            u = users[id.substr(ID_PREFIX.length)],
             icon, belt, padding, lmargin, rmargin;
 
         if (!u || !u.icon) return;

@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.5.5
+// @version      1.4.6
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -95,11 +95,10 @@ var Page = require('./page'),
     DataStore = require('./datastore'),
     Cache = require('./cache');
 
-var callbacks = [];
-var queue = [], task = false;
+var callbacks = [],
+    task = false;
 var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
-var SteamAPI = {};
 
 function keyFromPage(body) {
     var elem = (body.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
@@ -121,9 +120,9 @@ function registerKey() {
         method: 'POST',
         url: "/api/register_do",
         data: {url: "backpack.tf", comments: "backpack.tf Enhancement Suite", "user-id": token},
-        success: function (body) {
-            setKey(keyFromPage(body));
-        }
+        dataType: 'text'
+    }).then(function (body) {
+        setKey(keyFromPage(body));
     });
 }
 
@@ -132,38 +131,41 @@ function setKey(apikey) {
 
     key = apikey;
     DataStore.setItem("backpackapikey", apikey);
-    callbacks.forEach(function (callback) {
-        callback();
-    });
+    processInterface();
 }
 
 function loadKey() {
     $.ajax({
         method: 'GET',
         url: "/api/register",
-        success: function (body) {
-            var apikey = keyFromPage(body);
-
-            if (!apikey) {
-                return registerKey();
-            }
-
-            setKey(apikey);
-        },
         cache: false,
         dataType: "text"
+    }).then(function (body) {
+        var apikey = keyFromPage(body);
+
+        if (!apikey) {
+            return registerKey();
+        }
+
+        setKey(apikey);
     });
 }
 
 function requestInterface() {
-    queue.push(arguments);
-    if (!task) processInterface();
+    var args = arguments;
+
+    callbacks.push(function () {
+        callInterface.apply(null, args);
+    });
+
+    if (!task && isAvailable()) {
+        processInterface();
+    }
 }
 
 function processInterface() {
-    var next = queue.shift();
-
-    if (next) callInterface.apply(null, next);
+    var next = callbacks.shift();
+    if (next) next();
 }
 
 function callInterface(meta, callback, args) {
@@ -201,47 +203,46 @@ function callInterface(meta, callback, args) {
         url: url,
         data: data,
         cache: false,
-        success: function (json) {
-            var success = json.response.success;
+        dataType: 'json'
+    }).then(function (json) {
+        var success = json.response.success;
 
-            if (!success) {
-                if (meta._fail) return;
-                console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
-                if (json.message === "API key does not exist.") {
-                    removeKey();
-                    loadKey();
+        if (!success) {
+            if (meta._fail) return;
+            console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
+            if (json.message === "API key does not exist." || json.message === "This API key is not valid.") {
+                removeKey();
+                loadKey();
+                whenAvailable(function () {
+                    callInterface(meta, callback, args);
+                });
+            } else if (/^You can only request this page every/.test(json.message)) {
+                wait = json.message.match(/\d/g)[1] * 1000;
+                setTimeout(function () {
                     whenAvailable(function () {
                         callInterface(meta, callback, args);
                     });
-                } else if (/^You can only request this page every/.test(json.message)) {
-                    wait = json.message.match(/\d/g)[1] * 1000;
-                    setTimeout(function () {
-                        whenAvailable(function () {
-                            callInterface(meta, callback, args);
-                        });
-                    }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
-                } else { // Unknown error, maybe network disconnected
-                    setTimeout(function () {
-                        meta._fail = true;
-                        callInterface(meta, callback, args);
-                    }, 1000);
-                }
-                return;
+                }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
+            } else { // Unknown error, maybe network disconnected
+                setTimeout(function () {
+                    meta._fail = true;
+                    callInterface(meta, callback, args);
+                }, 1000);
             }
+            return;
+        }
 
-            if (meta.cache) {
-                apicache
-                    .timeout(meta.cache || 1000 * 60)
-                    .set(signature, json.response)
-                    .save()
-                ;
-            }
+        if (meta.cache) {
+            apicache
+                .timeout(meta.cache || 1000 * 60)
+                .set(signature, json.response)
+                .save()
+            ;
+        }
 
-            callback(json.response);
-            task = false;
-            processInterface();
-        },
-        dataType: "json"
+        callback(json.response);
+        task = false;
+        processInterface();
     });
 }
 
@@ -250,25 +251,6 @@ function whenAvailable(callback) {
     if (exports.isAvailable()) callback();
     else callbacks.push(callback);
 }
-
-SteamAPI.market = {};
-SteamAPI.market.PriceOverview = function (callback, args) {
-    var url = "http://steamcommunity.com/market/priceoverview/?appid=" + args.appid + "&market_hash_name=" + encodeURIComponent(args.hashname),
-        hash;
-    if (args.currency) url += "&currency=" + args.currency;
-    hash = url.substr(48);
-
-    GM_xmlhttpRequest({
-        method: "GET",
-        url: url,
-        onload: function (resp) {
-            var json = JSON.parse(resp.responseText);
-
-            apicache.timeout(1000 * 60).set(hash, json).save();
-            callback(json);
-        }
-    });
-};
 
 exports.init = function () {
     if (!key) {
@@ -326,8 +308,6 @@ exports.IGetUserListings = function (steamid, callback, args) {
         version: 2
     }, callback, args);
 };
-
-exports.stm = SteamAPI;
 
 },{"./cache":3,"./datastore":19,"./page":21}],3:[function(require,module,exports){
 var DataStore = require('./datastore');
@@ -759,7 +739,7 @@ function peekload(html) {
         $("#classifieds-buyers").html(buyers);
     }
 
-    if (!sellers.length && buyers.length) {
+    if (!sellers.length && !buyers.length) {
         $ppb.append("<p>No buy or sell orders for this item.</p>");
     }
 
@@ -956,9 +936,8 @@ var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
 
-var IS_DUPE = /Refer to entries in the item history <strong>where the item ID is not chronological/;
-
 // Injected into the page
+// Can't make the regex a constant here as it won't be visible to the injected code
 function addDupeCheck() {
     function addDupeWarn(historybtn, dupe) {
         historybtn.removeClass('btn-default').addClass(dupe ? 'btn-danger' : 'btn-success');
@@ -966,7 +945,7 @@ function addDupeCheck() {
 
     function checkDuped(oid, btn) {
         $.get("/item/" + oid, function (html) {
-            var dupe = IS_DUPE.test(html);
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
             window.dupeCache[oid] = dupe;
             window.addDupeWarn(btn, dupe);
         });
@@ -1047,7 +1026,7 @@ function bpDupeCheck() {
 
         if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
         $.get("/item/" + oid, function (html) {
-            var dupe = IS_DUPE.test(html);
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
             unsafeWindow.dupeCache[oid] = dupe;
             applyIcon(dupe);
         });
@@ -2042,7 +2021,7 @@ function listItem(id, value, sample, then) {
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.equipped').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !window.confirm("Error occured, continue listing?")) return;
+        if (!ok && !unsafeWindow.confirm("Error occured, continue listing?")) return;
         if (then) then();
     });
 }
@@ -2153,7 +2132,7 @@ function addSelectPageButtons() {
     $('.page-number').each(function () {
         var $this = $(this),
             label = $this.find('.page-anchor'),
-            page, sp;
+            sp;
 
         if (!label[0]) return;
         sp = $this.find('.select-page');
@@ -3004,6 +2983,7 @@ var BadgeSupporter = {
 };
 
 var badgemap = [BadgeSelfMade, BadgeSupporter];
+var ID_PREFIX = "7656119";
 
 function iconinf(item, particle, margins) {
     var o = {
@@ -3024,15 +3004,16 @@ function iconinf(item, particle, margins) {
 }
 
 var users = {
-    "76561198070299574": {badges: [0], color: '#028482'},
-    "76561198039453751": {badges: [1], icon: ['soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf', 14, [-4, -4]]},
-    "76561198068022595": {badges: [1], color: '#f9d200'},
-    "76561198107654171": {badges: [1], color: '#0b1c37', icon: ['xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8]]},
-    "76561198067575136": {badges: [1], icon: ['xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12]]},
-    "76561198044195191": {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
-    "76561198056198948": {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
-    "76561198067795713": {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
-    "76561197980709148": {badges: [1], color: '#A41408'}
+    8070299574: {badges: [0], color: '#028482'},
+    8039453751: {badges: [1], icon: ['soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf', 14, [-4, -4]]},
+    8068022595: {badges: [1], color: '#f9d200'},
+    8107654171: {badges: [1], color: '#0b1c37', icon: ['xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8]]},
+    8067575136: {badges: [1], icon: ['xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12]]},
+    8044195191: {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
+    8056198948: {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
+    8067795713: {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
+    7980709148: {badges: [1], color: '#A41408'},
+    8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
 };
 
 function renderUserBadges(badges) {
@@ -3055,8 +3036,8 @@ function badgePopovers() {
 
 function changeUserColors(handle) {
     handle.each(function () {
-        var id = this.dataset.id,
-            u = users[id];
+        var id = this.dataset.id || "",
+            u = users[id.substr(ID_PREFIX.length)];
 
         if (!u || !u.color) return;
 
@@ -3067,8 +3048,8 @@ function changeUserColors(handle) {
 
 function modifyBelts(handle) {
     handle.each(function () {
-        var id = this.dataset.id,
-            u = users[id],
+        var id = this.dataset.id || "",
+            u = users[id.substr(ID_PREFIX.length)],
             icon, belt, padding, lmargin, rmargin;
 
         if (!u || !u.icon) return;
@@ -3191,8 +3172,9 @@ function getter(name, val) {
 }
 
 exports.init = function () {
+    var menu = $('.navbar-profile-nav .dropdown-menu');
     state.steamid = $('.profile .avatar-container a')[0] || "";
-    state.loggedin = $('.navbar-profile-nav .dropdown-menu').length;
+    state.loggedin = menu.length;
 
     if (state.steamid) {
         state.profile = true;
@@ -3201,12 +3183,12 @@ exports.init = function () {
     }
 
     if (state.loggedin) {
-        state.ownid = $('.navbar-profile-nav .dropdown-menu .fa-briefcase').parent().attr('href').replace(nonNumerical, '');
+        state.ownid = menu.find('.fa-briefcase').parent().attr('href').replace(nonNumerical, '');
         if (state.profile) {
             state.ownprofile = state.ownid === state.steamid;
         }
 
-        state.token = unsafeWindow.userID || $('.navbar-profile-nav .dropdown-menu .fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
+        state.token = unsafeWindow.userID || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
         state.ownbackpack = state.ownprofile && state.backpack;
     }
 
@@ -3214,7 +3196,7 @@ exports.init = function () {
 
     state.appid = 440;
     if (location.hostname.indexOf("dota2") !== -1) state.appid = 570;
-    if (location.hostname.indexOf("csgo") !== -1) state.appid = 730;
+    else if (location.hostname.indexOf("csgo") !== -1) state.appid = 730;
     state.handles = $('.handle');
 };
 
@@ -3271,10 +3253,12 @@ exports.addPopovers = function (item, container, handlers) {
 
                 // Firefox support
                 $this.attr('data-bes-id', id);
-                Script.exec('(function () {'+
-                            'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
-                            'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
-                            '}());');
+                Script.exec(
+                    '(function () {'+
+                        'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
+                        'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
+                    '}());'
+                );
 
                 setTimeout(function () {
                     if ($this.filter(':hover').length) {
@@ -3346,8 +3330,7 @@ exports.addStyle = function (css) {
     (document.head || document.body || document.documentElement || document).appendChild(style);
 };
 
-exports.bp = function () { return unsafeWindow.backpack; }
-
+exports.bp = function () { return unsafeWindow.backpack; };
 exports.SUITE_VERSION = GM_info.script.version;
 
 },{"./script":24}],22:[function(require,module,exports){

@@ -2,9 +2,8 @@ var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
 
-var IS_DUPE = /Refer to entries in the item history <strong>where the item ID is not chronological/;
-
 // Injected into the page
+// Can't make the regex a constant here as it won't be visible to the injected code
 function addDupeCheck() {
     function addDupeWarn(historybtn, dupe) {
         historybtn.removeClass('btn-default').addClass(dupe ? 'btn-danger' : 'btn-success');
@@ -12,7 +11,7 @@ function addDupeCheck() {
 
     function checkDuped(oid, btn) {
         $.get("/item/" + oid, function (html) {
-            var dupe = IS_DUPE.test(html);
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
             window.dupeCache[oid] = dupe;
             window.addDupeWarn(btn, dupe);
         });
@@ -93,7 +92,7 @@ function bpDupeCheck() {
 
         if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
         $.get("/item/" + oid, function (html) {
-            var dupe = IS_DUPE.test(html);
+            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
             unsafeWindow.dupeCache[oid] = dupe;
             applyIcon(dupe);
         });

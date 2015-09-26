@@ -22,8 +22,9 @@ function getter(name, val) {
 }
 
 exports.init = function () {
+    var menu = $('.navbar-profile-nav .dropdown-menu');
     state.steamid = $('.profile .avatar-container a')[0] || "";
-    state.loggedin = $('.navbar-profile-nav .dropdown-menu').length;
+    state.loggedin = menu.length;
 
     if (state.steamid) {
         state.profile = true;
@@ -32,12 +33,12 @@ exports.init = function () {
     }
 
     if (state.loggedin) {
-        state.ownid = $('.navbar-profile-nav .dropdown-menu .fa-briefcase').parent().attr('href').replace(nonNumerical, '');
+        state.ownid = menu.find('.fa-briefcase').parent().attr('href').replace(nonNumerical, '');
         if (state.profile) {
             state.ownprofile = state.ownid === state.steamid;
         }
 
-        state.token = unsafeWindow.userID || $('.navbar-profile-nav .dropdown-menu .fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
+        state.token = unsafeWindow.userID || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
         state.ownbackpack = state.ownprofile && state.backpack;
     }
 
@@ -45,7 +46,7 @@ exports.init = function () {
 
     state.appid = 440;
     if (location.hostname.indexOf("dota2") !== -1) state.appid = 570;
-    if (location.hostname.indexOf("csgo") !== -1) state.appid = 730;
+    else if (location.hostname.indexOf("csgo") !== -1) state.appid = 730;
     state.handles = $('.handle');
 };
 
@@ -102,10 +103,12 @@ exports.addPopovers = function (item, container, handlers) {
 
                 // Firefox support
                 $this.attr('data-bes-id', id);
-                Script.exec('(function () {'+
-                            'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
-                            'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
-                            '}());');
+                Script.exec(
+                    '(function () {'+
+                        'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
+                        'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
+                    '}());'
+                );
 
                 setTimeout(function () {
                     if ($this.filter(':hover').length) {
@@ -177,6 +180,5 @@ exports.addStyle = function (css) {
     (document.head || document.body || document.documentElement || document).appendChild(style);
 };
 
-exports.bp = function () { return unsafeWindow.backpack; }
-
+exports.bp = function () { return unsafeWindow.backpack; };
 exports.SUITE_VERSION = GM_info.script.version;

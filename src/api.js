@@ -2,11 +2,10 @@ var Page = require('./page'),
     DataStore = require('./datastore'),
     Cache = require('./cache');
 
-var callbacks = [];
-var queue = [], task = false;
+var callbacks = [],
+    task = false;
 var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
-var SteamAPI = {};
 
 function keyFromPage(body) {
     var elem = (body.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
@@ -28,9 +27,9 @@ function registerKey() {
         method: 'POST',
         url: "/api/register_do",
         data: {url: "backpack.tf", comments: "backpack.tf Enhancement Suite", "user-id": token},
-        success: function (body) {
-            setKey(keyFromPage(body));
-        }
+        dataType: 'text'
+    }).then(function (body) {
+        setKey(keyFromPage(body));
     });
 }
 
@@ -39,38 +38,41 @@ function setKey(apikey) {
 
     key = apikey;
     DataStore.setItem("backpackapikey", apikey);
-    callbacks.forEach(function (callback) {
-        callback();
-    });
+    processInterface();
 }
 
 function loadKey() {
     $.ajax({
         method: 'GET',
         url: "/api/register",
-        success: function (body) {
-            var apikey = keyFromPage(body);
-
-            if (!apikey) {
-                return registerKey();
-            }
-
-            setKey(apikey);
-        },
         cache: false,
         dataType: "text"
+    }).then(function (body) {
+        var apikey = keyFromPage(body);
+
+        if (!apikey) {
+            return registerKey();
+        }
+
+        setKey(apikey);
     });
 }
 
 function requestInterface() {
-    queue.push(arguments);
-    if (!task) processInterface();
+    var args = arguments;
+
+    callbacks.push(function () {
+        callInterface.apply(null, args);
+    });
+
+    if (!task && isAvailable()) {
+        processInterface();
+    }
 }
 
 function processInterface() {
-    var next = queue.shift();
-
-    if (next) callInterface.apply(null, next);
+    var next = callbacks.shift();
+    if (next) next();
 }
 
 function callInterface(meta, callback, args) {
@@ -108,47 +110,46 @@ function callInterface(meta, callback, args) {
         url: url,
         data: data,
         cache: false,
-        success: function (json) {
-            var success = json.response.success;
+        dataType: 'json'
+    }).then(function (json) {
+        var success = json.response.success;
 
-            if (!success) {
-                if (meta._fail) return;
-                console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
-                if (json.message === "API key does not exist.") {
-                    removeKey();
-                    loadKey();
+        if (!success) {
+            if (meta._fail) return;
+            console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
+            if (json.message === "API key does not exist." || json.message === "This API key is not valid.") {
+                removeKey();
+                loadKey();
+                whenAvailable(function () {
+                    callInterface(meta, callback, args);
+                });
+            } else if (/^You can only request this page every/.test(json.message)) {
+                wait = json.message.match(/\d/g)[1] * 1000;
+                setTimeout(function () {
                     whenAvailable(function () {
                         callInterface(meta, callback, args);
                     });
-                } else if (/^You can only request this page every/.test(json.message)) {
-                    wait = json.message.match(/\d/g)[1] * 1000;
-                    setTimeout(function () {
-                        whenAvailable(function () {
-                            callInterface(meta, callback, args);
-                        });
-                    }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
-                } else { // Unknown error, maybe network disconnected
-                    setTimeout(function () {
-                        meta._fail = true;
-                        callInterface(meta, callback, args);
-                    }, 1000);
-                }
-                return;
+                }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
+            } else { // Unknown error, maybe network disconnected
+                setTimeout(function () {
+                    meta._fail = true;
+                    callInterface(meta, callback, args);
+                }, 1000);
             }
+            return;
+        }
 
-            if (meta.cache) {
-                apicache
-                    .timeout(meta.cache || 1000 * 60)
-                    .set(signature, json.response)
-                    .save()
-                ;
-            }
+        if (meta.cache) {
+            apicache
+                .timeout(meta.cache || 1000 * 60)
+                .set(signature, json.response)
+                .save()
+            ;
+        }
 
-            callback(json.response);
-            task = false;
-            processInterface();
-        },
-        dataType: "json"
+        callback(json.response);
+        task = false;
+        processInterface();
     });
 }
 
@@ -157,25 +158,6 @@ function whenAvailable(callback) {
     if (exports.isAvailable()) callback();
     else callbacks.push(callback);
 }
-
-SteamAPI.market = {};
-SteamAPI.market.PriceOverview = function (callback, args) {
-    var url = "http://steamcommunity.com/market/priceoverview/?appid=" + args.appid + "&market_hash_name=" + encodeURIComponent(args.hashname),
-        hash;
-    if (args.currency) url += "&currency=" + args.currency;
-    hash = url.substr(48);
-
-    GM_xmlhttpRequest({
-        method: "GET",
-        url: url,
-        onload: function (resp) {
-            var json = JSON.parse(resp.responseText);
-
-            apicache.timeout(1000 * 60).set(hash, json).save();
-            callback(json);
-        }
-    });
-};
 
 exports.init = function () {
     if (!key) {
@@ -233,5 +215,3 @@ exports.IGetUserListings = function (steamid, callback, args) {
         version: 2
     }, callback, args);
 };
-
-exports.stm = SteamAPI;

@@ -1,3 +1,8 @@
+### v1.4.6
+Fixed several edge cases with API key registration.
+Fixed history hover dupe checking.
+After 3 unsuccessful quicklisting attempts, you are now able to hide the dialog. (applies to the tab only)
+
 ### v1.4.5
 Import/Export settings
 New supporter perk: Custom belts (see forum post)

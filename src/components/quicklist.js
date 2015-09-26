@@ -183,7 +183,7 @@ function listItem(id, value, sample, then) {
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.equipped').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !window.confirm("Error occured, continue listing?")) return;
+        if (!ok && !unsafeWindow.confirm("Error occured, continue listing?")) return;
         if (then) then();
     });
 }
@@ -294,7 +294,7 @@ function addSelectPageButtons() {
     $('.page-number').each(function () {
         var $this = $(this),
             label = $this.find('.page-anchor'),
-            page, sp;
+            sp;
 
         if (!label[0]) return;
         sp = $this.find('.select-page');

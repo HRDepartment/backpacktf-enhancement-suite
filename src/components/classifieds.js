@@ -89,7 +89,7 @@ function peekload(html) {
         $("#classifieds-buyers").html(buyers);
     }
 
-    if (!sellers.length && buyers.length) {
+    if (!sellers.length && !buyers.length) {
         $ppb.append("<p>No buy or sell orders for this item.</p>");
     }
 
