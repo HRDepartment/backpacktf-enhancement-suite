@@ -73,16 +73,13 @@ function applyTagsToItems(items) {
         if (correctscm && ds.pScm) {
             scmprice = Pricing.fromBackpack(sec, ds.pScm);
             scmvalue = scmprice.value;
-            scmcurrency = scmprice.currency;
+            scmcurrency = 'metal';
 
-            if (ec.convertToBC(scmvalue, scmcurrency) > sec.currencies.keys.low) {
+            if (scmvalue > sec.currencies.keys.low) {
                 scmprice = sec.convertToCurrency(scmprice, 'keys');
-            } else {
-                scmprice = sec.convertToCurrency(scmprice, 'metal');
+                scmcurrency = scmprice.currency;
             }
 
-            scmcurrency = scmprice.currency;
-            scmvalue = ec.convertToBC(scmprice.value, scmcurrency);
             if (scmPrice) inst = sec;
         }
 
@@ -110,8 +107,24 @@ function applyTagsToItems(items) {
         }
 
         v = inst.convertFromBC(v, vc);
-        if (value && currency) value = ec.convertFromBC(value, currency);
-        if (scmvalue) scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
+        // TODO: fix in econcc
+        if (vc === 'usd') {
+            v *= inst.valueFromRange(inst.currencies.metal).value;
+        }
+
+        if (value && currency) {
+            value = ec.convertFromBC(value, currency);
+            if (currency === 'usd') {
+                value *= ec.valueFromRange(ec.currencies.metal).value;
+            }
+        }
+
+        if (scmvalue) {
+            scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
+            if (scmcurrency === 'usd') {
+                scmvalue *= sec.valueFromRange(sec.currencies.metal).value;
+            }
+        }
 
         o = {value: v || 0.001, currency: vc};
 

@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.6
+// @version      1.4.7
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -1725,16 +1725,13 @@ function applyTagsToItems(items) {
         if (correctscm && ds.pScm) {
             scmprice = Pricing.fromBackpack(sec, ds.pScm);
             scmvalue = scmprice.value;
-            scmcurrency = scmprice.currency;
+            scmcurrency = 'metal';
 
-            if (ec.convertToBC(scmvalue, scmcurrency) > sec.currencies.keys.low) {
+            if (scmvalue > sec.currencies.keys.low) {
                 scmprice = sec.convertToCurrency(scmprice, 'keys');
-            } else {
-                scmprice = sec.convertToCurrency(scmprice, 'metal');
+                scmcurrency = scmprice.currency;
             }
 
-            scmcurrency = scmprice.currency;
-            scmvalue = ec.convertToBC(scmprice.value, scmcurrency);
             if (scmPrice) inst = sec;
         }
 
@@ -1762,8 +1759,24 @@ function applyTagsToItems(items) {
         }
 
         v = inst.convertFromBC(v, vc);
-        if (value && currency) value = ec.convertFromBC(value, currency);
-        if (scmvalue) scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
+        // TODO: fix in econcc
+        if (vc === 'usd') {
+            v *= inst.valueFromRange(inst.currencies.metal).value;
+        }
+
+        if (value && currency) {
+            value = ec.convertFromBC(value, currency);
+            if (currency === 'usd') {
+                value *= ec.valueFromRange(ec.currencies.metal).value;
+            }
+        }
+
+        if (scmvalue) {
+            scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
+            if (scmcurrency === 'usd') {
+                scmvalue *= sec.valueFromRange(sec.currencies.metal).value;
+            }
+        }
 
         o = {value: v || 0.001, currency: vc};
 
@@ -3010,7 +3023,10 @@ var users = {
     8107654171: {badges: [1], color: '#0b1c37', icon: ['xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8]]},
     8067575136: {badges: [1], icon: ['xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12]]},
     8044195191: {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
+
     8056198948: {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
+    8165677507: {badges: [1], color: '#FF6000', icon: ['cc_summer2015_potassium_bonnett.3849871e2fe2b96fb41209de62defa59b136f038', 38, [-5, -6]]},
+
     8067795713: {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
     7980709148: {badges: [1], color: '#A41408'},
     8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
@@ -3063,7 +3079,7 @@ function modifyBelts(handle) {
         if (icon.lmargin) lmargin = icon.lmargin;
         if (icon.rmargin) rmargin = icon.rmargin;
 
-        belt.innerHTML = '<span style="background-image:' + icon.img + ';background-size:contain;background-repeat:no-repeat;padding: ' + padding + 'px;margin-left:' + lmargin + 'px;margin-right:' + rmargin + 'px;color: transparent;">★</span>';
+        belt.innerHTML = '<span style="background-image:' + icon.img + ';background-size:contain;background-repeat:no-repeat;padding:' + padding + 'px;margin-left:' + lmargin + 'px;margin-right:' + rmargin + 'px;color: transparent;">★</span>';
     });
 }
 
@@ -3501,8 +3517,16 @@ exports.fromListing = function (ec, price) {
 
 exports.fromBackpack = function (ec, price) {
     if (typeof price !== 'string') return {value: 0, currency: null};
-    var val = ec.parse(price);
-    return {value: ec.convertToBC(val), currency: val.currency};
+    var val = ec.parse(price),
+        bc = ec.convertToBC(val),
+        c = val.currency;
+
+    // TODO: fix in econcc
+    if (c === 'usd') {
+        bc /= ec.valueFromRange(ec.currencies.metal).value;
+    }
+
+    return {value: bc, currency: c};
 };
 
 },{"./api":2,"./preferences":22}],24:[function(require,module,exports){

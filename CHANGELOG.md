@@ -1,3 +1,6 @@
+### v1.4.7
+Fixed long-lasting bug where 1 refined metal would be considered to be worth its USD price in metal (1:1), instead of being 1 ref.
+
 ### v1.4.6
 Fixed several edge cases with API key registration.
 Fixed history hover dupe checking.
