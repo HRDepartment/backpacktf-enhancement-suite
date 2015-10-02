@@ -49,6 +49,7 @@ var users = {
     8067795713: {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
     7980709148: {badges: [1], color: '#A41408'},
     8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
+    8117484140: {badges: [1], color: '#00BBFF', icon: ['medic_ttg_max.5c4b7fcf10ab25fbd166831aea1979395549cb75', 13, [-10, -11]]},
 };
 
 function renderUserBadges(badges) {
@@ -116,7 +117,7 @@ function load() {
     // User badges
     if (!Page.isProfile()) return;
 
-    user = users[Page.profileSteamID()];
+    user = users[Page.profileSteamID().substr(ID_PREFIX.length)];
     if (!user || !user.badges) return;
 
     renderUserBadges(user.badges);
