@@ -55,9 +55,6 @@ function applyTagsToItems(items) {
             mults = modmults(this);
             if (mults !== 0) {
                 value += mults * modmult;
-
-                clear = true;
-                ds.price = value;
             }
 
             if (mults || !pricedef) {
@@ -74,23 +71,21 @@ function applyTagsToItems(items) {
         if (listing) s = {step: EconCC.Disabled};
         else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
-        if (mults || !pricedef) {
-            ec.scope(s, function () {
-                var f;
+        ec.scope(s, function () {
+            var f;
 
+            if (mults || !pricedef) {
                 // Exception for keys
                 if (di === '5021') f = ec.formatCurrency(o);
                 else f = ec.format(o, EconCC.Mode.Label).replace('.00', '');
 
                 eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
-            });
-        }
+            }
 
-        if (tooltips && /key/.test(currency)) {
-            ec.scope(s, function () {
+            if (tooltips && currency.substr(0, 3) === 'key') {
                 eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
-            });
-        }
+            }
+        });
     });
 
     // Clear price cache for updateValues()
@@ -117,7 +112,7 @@ function load() {
 
     if (!enabled()) return;
 
-    items = $('.item:not([data-vote])');
+    items = $('.item[data-p-bptf]');
     if (!items.length) return;
 
     setupInst(function () {

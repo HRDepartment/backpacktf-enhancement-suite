@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.8
+// @version      1.4.8.1
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -1617,9 +1617,6 @@ function applyTagsToItems(items) {
             mults = modmults(this);
             if (mults !== 0) {
                 value += mults * modmult;
-
-                clear = true;
-                ds.price = value;
             }
 
             if (mults || !pricedef) {
@@ -1636,23 +1633,21 @@ function applyTagsToItems(items) {
         if (listing) s = {step: EconCC.Disabled};
         else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
-        if (mults || !pricedef) {
-            ec.scope(s, function () {
-                var f;
+        ec.scope(s, function () {
+            var f;
 
+            if (mults || !pricedef) {
                 // Exception for keys
                 if (di === '5021') f = ec.formatCurrency(o);
                 else f = ec.format(o, EconCC.Mode.Label).replace('.00', '');
 
                 eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
-            });
-        }
+            }
 
-        if (tooltips && /key/.test(currency)) {
-            ec.scope(s, function () {
+            if (tooltips && currency.substr(0, 3) === 'key') {
                 eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
-            });
-        }
+            }
+        });
     });
 
     // Clear price cache for updateValues()
@@ -1679,7 +1674,7 @@ function load() {
 
     if (!enabled()) return;
 
-    items = $('.item:not([data-vote])');
+    items = $('.item[data-p-bptf]');
     if (!items.length) return;
 
     setupInst(function () {
@@ -2871,6 +2866,7 @@ var users = {
     7980709148: {badges: [1], color: '#A41408'},
     8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
     8117484140: {badges: [1], color: '#00BBFF', icon: ['medic_ttg_max.5c4b7fcf10ab25fbd166831aea1979395549cb75', 13, [-10, -11]]},
+    8005031515: {badges: [1], icon: ['demo_hood.2fa33d5d09dcbfed6345cf927db03c10170b341e', 29, [-2, -5]]},
 };
 
 function renderUserBadges(badges) {
