@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.7.1
+// @version      1.4.8
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -34,8 +34,7 @@ Prefs.defaults({
     notifications: {updatecount: 'click'},
     pricetags: {
         modmult: 0.5,
-        tooltips: true,
-        correctscm: false
+        tooltips: true
     },
     changes: {
         enabled: true,
@@ -651,12 +650,9 @@ module.exports = load;
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
-    API = require('../api'),
     Pricing = require('../pricing'),
     MenuActions = require('../menu-actions'),
     Pricetags = require('./pricetags');
-
-var classifiedsCache = {};
 
 function addRemoveAllListings() {
     MenuActions.addAction({
@@ -832,91 +828,8 @@ function checkAutoclose() {
     }
 }
 
-function findListing(obj, id) {
-    var listings = obj.listings,
-        listing, len, i;
-
-    for (i = 0, len = listings.length; i < len; i += 1) {
-        listing = listings[i];
-
-        if (listing.id == id) return {bump: listing.bump, created: listing.created};
-    }
-}
-
-function switchTimes($this, listing, obj) {
-    var lid = listing[0].id.substr(8),
-        mode = $this.attr('data-mode'),
-        handle = $this.find('.user-handle-container'),
-        list = findListing(obj, lid);
-
-    if (!list) {
-        listing.remove(); // No longer exists
-        return;
-    }
-
-    if (mode === '0') { // bumped
-        $this.html('Created <span class="timeago listing-timeago" title="' + (new Date(list.created * 1000)).toISOString() + '">' + (moment.unix(list.created).fromNow()) + '</span> by ');
-    } else { // created
-        $this.html('Bumped <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span> by ');
-    }
-
-    $this.append(handle).attr('data-mode', +!+mode);
-    if (mode === '0') { // add bumped
-        $this.append(' <small>Bumped <span class="timeago listing-timeago" title="' + (new Date(list.bump * 1000)).toISOString() + '">' + (moment.unix(list.bump).fromNow()) + '</span></small>');
-    }
-
-    Script.exec('$(".listing-timeago").timeago().tooltip({placement: "top", animation: false});');
-}
-
-function listingClick(next) {
-    var $this = $(this),
-        steamid = $this.find('.handle').attr('data-id'),
-        listing = $this.closest('.media.listing'),
-        cache = classifiedsCache[steamid];
-
-    if (!steamid) return;
-
-    if (cache) {
-        switchTimes($this, listing, cache);
-        if (typeof next === 'function') next();
-        return;
-    } else if (cache === false) {
-        return; // already loading
-    }
-
-    classifiedsCache[steamid] = false;
-    API.IGetUserListings(steamid, function (obj) {
-        classifiedsCache[steamid] = obj;
-        switchTimes($this, listing, obj);
-
-        if (typeof next === 'function') next();
-    });
-}
-
 function global() {
-    var media = $('.listing-buttons').parent(),
-        listingTimes = media.find('.text-muted:first');
-
     if ($('.listing-remove').length) addRemoveAllListings();
-    if (!listingTimes.length) return;
-
-    listingTimes.click(listingClick).attr('data-mode', '0');
-    MenuActions.addAction({
-        name: 'Swap Listing Time',
-        icon: 'fa-exchange',
-        id: 'swap-listing-time',
-        click: function () {
-            var at = 0;
-
-            (function next() {
-                var elem = listingTimes[at];
-
-                if (!next) return;
-                at += 1;
-                listingClick.call(elem, next);
-            }());
-        }
-    });
 }
 
 function load() {
@@ -931,7 +844,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":20,"../page":21,"../preferences":22,"../pricing":23,"../script":24,"./pricetags":10}],7:[function(require,module,exports){
+},{"../menu-actions":20,"../page":21,"../preferences":22,"../pricing":23,"../script":24,"./pricetags":10}],7:[function(require,module,exports){
 var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
@@ -1441,9 +1354,6 @@ function addTabContent() {
 
             buttonsyn('Tooltips', 'pricetags', 'tooltips'),
             help("Adds tooltips to items that are priced in keys."),
-
-            buttonsyn('Use correct SCM pricing', 'pricetags', 'correctscm'),
-            help("Modifies backpack.tf's SCM pricing client-side to use the Mann Co. Store's key price, instead of the calculated KEYUSD price (REFUSD * KEYREF)"),
         ]),
 
         section('Recent price changes in backpacks', [
@@ -1654,8 +1564,7 @@ var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
     Script = require('../script');
-var KEY_PRICE = 2.49;
-var ec, sec;
+var ec;
 
 function modmults(e) {
     var paint = e.dataset.paintPrice,
@@ -1678,27 +1587,13 @@ function modmults(e) {
 function setupInst(next) {
     Pricing.shared(function (inst) {
         ec = inst;
-
-        if (Prefs.pref('pricetags', 'correctscm')) {
-            Pricing.ec(function (ins) {
-                var refprice = KEY_PRICE / ins.convertToCurrency({value: 1, currency: 'keys'}, 'metal').value;
-                sec = ins;
-                sec.modify({
-                    currencies: {
-                        usd: {low: refprice, high: undefined, hidden: true},
-                        metal: {low: refprice, high: undefined, trailing: EconCC.Disabled}
-                    }
-                });
-                next();
-            });
-        } else next();
+        next();
     });
 }
 
 function applyTagsToItems(items) {
-    var modmult = Prefs.pref('pricetags', 'modmult'),
-        tooltips = Prefs.pref('pricetags', 'tooltips'),
-        correctscm = Prefs.pref('pricetags', 'correctscm'),
+    var tooltips = Prefs.pref('pricetags', 'tooltips'),
+        modmult = Prefs.pref('pricetags', 'modmult'),
         pricedef = Pricing.default(),
         clear = false;
 
@@ -1707,102 +1602,55 @@ function applyTagsToItems(items) {
             ds = this.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
-            scmPrice = !listing && !ds.pBptfAll && !!ds.pScmAll,
             eq = $this.find('.equipped'),
-            iprice = ds.pBptf || ds.pScm,
             mults = 0,
             s = {},
-            inst = ec,
             o;
 
-        if (!iprice) return;
+        if (!ds.pBptf) return;
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
             value = price.value,
-            currency = price.currency,
-            scmprice, scmvalue, scmcurrency, v, vc;
-
-        if (correctscm && ds.pScm) {
-            scmprice = Pricing.fromBackpack(sec, ds.pScm);
-            scmvalue = scmprice.value;
-            scmcurrency = 'metal';
-
-            if (scmvalue > sec.currencies.keys.low) {
-                scmprice = sec.convertToCurrency(scmprice, 'keys');
-                scmcurrency = scmprice.currency;
-            }
-
-            if (scmPrice) inst = sec;
-        }
-
-        if (correctscm && scmPrice) {
-            v = scmvalue;
-            vc = scmcurrency;
-        } else {
-            v = value;
-            vc = currency;
-        }
+            currency = price.currency;
 
         if (!listing) {
             mults = modmults(this);
             if (mults !== 0) {
-                v += mults * modmult;
+                value += mults * modmult;
 
                 clear = true;
-                ds.price = v;
+                ds.price = value;
             }
 
             if (mults || !pricedef) {
                 clear = true;
-                ds.price = v;
+                ds.price = value;
             }
         }
 
-        v = inst.convertFromBC(v, vc);
-        // TODO: fix in econcc
-        if (vc === 'usd') {
-            v *= inst.valueFromRange(inst.currencies.metal).value;
-        }
+        value = ec.convertFromBC(value, currency);
 
-        if (value && currency) {
-            value = ec.convertFromBC(value, currency);
-            if (currency === 'usd') {
-                value *= ec.valueFromRange(ec.currencies.metal).value;
-            }
-        }
-
-        if (scmvalue) {
-            scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
-            if (scmcurrency === 'usd') {
-                scmvalue *= sec.valueFromRange(sec.currencies.metal).value;
-            }
-        }
-
-        o = {value: v || 0.001, currency: vc};
+        o = {value: value || 0.001, currency: currency};
 
         // Disable step for listings
         if (listing) s = {step: EconCC.Disabled};
-        else if (inst.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
+        else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
-        if ((!scmPrice && (mults || !pricedef)) || (scmPrice && correctscm)) {
-            inst.scope(s, function () {
+        if (mults || !pricedef) {
+            ec.scope(s, function () {
                 var f;
 
                 // Exception for keys
-                if (di === '5021') f = inst.formatCurrency(o);
-                else f = inst.format(o, EconCC.Mode.Label).replace('.00', '');
+                if (di === '5021') f = ec.formatCurrency(o);
+                else f = ec.format(o, EconCC.Mode.Label).replace('.00', '');
 
                 eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
             });
         }
 
-        if (correctscm && ds.pScmAll) {
-            ds.pScmAll = sec.format({value: scmvalue, currency: scmcurrency}, EconCC.Mode.Long).replace(' (', ', ').replace(')', '');
-        }
-
         if (tooltips && /key/.test(currency)) {
-            inst.scope(s, function () {
-                eq.attr('title', inst.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
+            ec.scope(s, function () {
+                eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
             });
         }
     });
@@ -1822,7 +1670,6 @@ function enabled() {
     return Page.appid() === 440 && (
         Prefs.pref('pricetags', 'modmult') !== 0.5 ||
         Prefs.pref('pricetags', 'tooltips') !== false ||
-        Prefs.pref('pricetags', 'correctscm') !== false ||
         !Pricing.default()
     );
 }
@@ -2298,7 +2145,7 @@ var Script = require('../script'),
 var bans = [],
     bansShown = false,
     cachePruneTime = 60 * 30 * 1000, // 30 minutes (in ms)
-    banIssuers = ["steamBans", "opBans", "stfBans", "bzBans", "ppmBans", "bbgBans", "tf2tBans", "bptfBans", "srBans"],
+    banIssuers = ["srBans", "bzBans", "opBans", "stfBans", "bptfBans"],
     reptfSuccess = true,
     steamid, repCache;
 
@@ -2328,7 +2175,7 @@ function showBansModal() {
     });
     html += "</ul>";
 
-    Page.modal("rep.tf bans", html);
+    Page.modal("Community bans", html);
 }
 
 function addProfileButtons() {
@@ -2363,11 +2210,6 @@ function addIssuers() {
 
     spinner("Outpost");
     spinner("Bazaar");
-    //spinner("Scrap.tf");
-    //spinner("PPM");
-    // Uncomment to enable
-    //spinner("TF2-Trader");
-    //spinner("BBG");
     $('.community-statii .stats li').last().after($(groups.join("")));
 }
 
@@ -2398,8 +2240,8 @@ function compactResponse(json) {
 function updateCache() {
     GM_xmlhttpRequest({
         method: "POST",
-        url: "http://rep.tf/api/bans?str=" + steamid,
-        headers: {Referer: 'http://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest' },
+        url: "https://rep.tf/api/bans?str=" + steamid,
+        headers: {Referer: 'https://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://rep.tf'},
         onload: function (resp) {
             var json;
 
@@ -2435,7 +2277,9 @@ function showBans(json) {
         status.removeClass('label-default');
 
         if (reptfSuccess) {
-            if (!obj.banned) return;
+            if (!obj || !obj.banned) {
+                return status.addClass("label-warning").data('content', "Ban status could not be retrieved.").text("ERR");
+            }
 
             if (obj.banned === "bad") {
                 bans.push({name: name, reason: obj.message});
@@ -2453,10 +2297,6 @@ function showBans(json) {
     ban("Outpost", json.opBans);
     ban("Bazaar", json.bzBans);
     ban("Backpack.tf", json.bptfBans);
-    //ban("Scrap.tf", json.stfBans);
-    //ban("PPM", json.ppmBans);
-    //ban("TF2-Trader", json.tf2tBans);
-    //ban("BBG", json.bbgBans);
 
     addRepTooltips();
     $('#showrep').css('color', reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E');
@@ -3518,16 +3358,9 @@ exports.fromListing = function (ec, price) {
 
 exports.fromBackpack = function (ec, price) {
     if (typeof price !== 'string') return {value: 0, currency: null};
-    var val = ec.parse(price),
-        bc = ec.convertToBC(val),
-        c = val.currency;
+    var val = ec.parse(price);
 
-    // TODO: fix in econcc
-    if (c === 'usd') {
-        bc /= ec.valueFromRange(ec.currencies.metal).value;
-    }
-
-    return {value: bc, currency: c};
+    return {value: ec.convertToBC(val), currency: val.currency};
 };
 
 },{"./api":2,"./preferences":22}],24:[function(require,module,exports){

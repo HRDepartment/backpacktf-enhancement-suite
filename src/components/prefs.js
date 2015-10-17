@@ -162,9 +162,6 @@ function addTabContent() {
 
             buttonsyn('Tooltips', 'pricetags', 'tooltips'),
             help("Adds tooltips to items that are priced in keys."),
-
-            buttonsyn('Use correct SCM pricing', 'pricetags', 'correctscm'),
-            help("Modifies backpack.tf's SCM pricing client-side to use the Mann Co. Store's key price, instead of the calculated KEYUSD price (REFUSD * KEYREF)"),
         ]),
 
         section('Recent price changes in backpacks', [

@@ -5,7 +5,7 @@ var Script = require('../script'),
 var bans = [],
     bansShown = false,
     cachePruneTime = 60 * 30 * 1000, // 30 minutes (in ms)
-    banIssuers = ["steamBans", "opBans", "stfBans", "bzBans", "ppmBans", "bbgBans", "tf2tBans", "bptfBans", "srBans"],
+    banIssuers = ["srBans", "bzBans", "opBans", "stfBans", "bptfBans"],
     reptfSuccess = true,
     steamid, repCache;
 
@@ -35,7 +35,7 @@ function showBansModal() {
     });
     html += "</ul>";
 
-    Page.modal("rep.tf bans", html);
+    Page.modal("Community bans", html);
 }
 
 function addProfileButtons() {
@@ -70,11 +70,6 @@ function addIssuers() {
 
     spinner("Outpost");
     spinner("Bazaar");
-    //spinner("Scrap.tf");
-    //spinner("PPM");
-    // Uncomment to enable
-    //spinner("TF2-Trader");
-    //spinner("BBG");
     $('.community-statii .stats li').last().after($(groups.join("")));
 }
 
@@ -105,8 +100,8 @@ function compactResponse(json) {
 function updateCache() {
     GM_xmlhttpRequest({
         method: "POST",
-        url: "http://rep.tf/api/bans?str=" + steamid,
-        headers: {Referer: 'http://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest' },
+        url: "https://rep.tf/api/bans?str=" + steamid,
+        headers: {Referer: 'https://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://rep.tf'},
         onload: function (resp) {
             var json;
 
@@ -142,7 +137,9 @@ function showBans(json) {
         status.removeClass('label-default');
 
         if (reptfSuccess) {
-            if (!obj.banned) return;
+            if (!obj || !obj.banned) {
+                return status.addClass("label-warning").data('content', "Ban status could not be retrieved.").text("ERR");
+            }
 
             if (obj.banned === "bad") {
                 bans.push({name: name, reason: obj.message});
@@ -160,10 +157,6 @@ function showBans(json) {
     ban("Outpost", json.opBans);
     ban("Bazaar", json.bzBans);
     ban("Backpack.tf", json.bptfBans);
-    //ban("Scrap.tf", json.stfBans);
-    //ban("PPM", json.ppmBans);
-    //ban("TF2-Trader", json.tf2tBans);
-    //ban("BBG", json.bbgBans);
 
     addRepTooltips();
     $('#showrep').css('color', reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E');

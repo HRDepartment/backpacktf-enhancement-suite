@@ -67,14 +67,7 @@ exports.fromListing = function (ec, price) {
 
 exports.fromBackpack = function (ec, price) {
     if (typeof price !== 'string') return {value: 0, currency: null};
-    var val = ec.parse(price),
-        bc = ec.convertToBC(val),
-        c = val.currency;
+    var val = ec.parse(price);
 
-    // TODO: fix in econcc
-    if (c === 'usd') {
-        bc /= ec.valueFromRange(ec.currencies.metal).value;
-    }
-
-    return {value: bc, currency: c};
+    return {value: ec.convertToBC(val), currency: val.currency};
 };

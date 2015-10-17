@@ -1,3 +1,8 @@
+### v1.4.8
+Fixed rep.tf integration.
+Removed Classifieds listing creation time feature as it is now part of the site.
+Removed fixed SCM prices as they are now fixed on the site.
+
 ### v1.4.7
 Fixed long-lasting bug where 1 refined metal would be considered to be worth its USD price in metal (1:1), instead of being 1 ref.
 

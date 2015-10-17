@@ -2,8 +2,7 @@ var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
     Script = require('../script');
-var KEY_PRICE = 2.49;
-var ec, sec;
+var ec;
 
 function modmults(e) {
     var paint = e.dataset.paintPrice,
@@ -26,27 +25,13 @@ function modmults(e) {
 function setupInst(next) {
     Pricing.shared(function (inst) {
         ec = inst;
-
-        if (Prefs.pref('pricetags', 'correctscm')) {
-            Pricing.ec(function (ins) {
-                var refprice = KEY_PRICE / ins.convertToCurrency({value: 1, currency: 'keys'}, 'metal').value;
-                sec = ins;
-                sec.modify({
-                    currencies: {
-                        usd: {low: refprice, high: undefined, hidden: true},
-                        metal: {low: refprice, high: undefined, trailing: EconCC.Disabled}
-                    }
-                });
-                next();
-            });
-        } else next();
+        next();
     });
 }
 
 function applyTagsToItems(items) {
-    var modmult = Prefs.pref('pricetags', 'modmult'),
-        tooltips = Prefs.pref('pricetags', 'tooltips'),
-        correctscm = Prefs.pref('pricetags', 'correctscm'),
+    var tooltips = Prefs.pref('pricetags', 'tooltips'),
+        modmult = Prefs.pref('pricetags', 'modmult'),
         pricedef = Pricing.default(),
         clear = false;
 
@@ -55,102 +40,55 @@ function applyTagsToItems(items) {
             ds = this.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
-            scmPrice = !listing && !ds.pBptfAll && !!ds.pScmAll,
             eq = $this.find('.equipped'),
-            iprice = ds.pBptf || ds.pScm,
             mults = 0,
             s = {},
-            inst = ec,
             o;
 
-        if (!iprice) return;
+        if (!ds.pBptf) return;
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
             value = price.value,
-            currency = price.currency,
-            scmprice, scmvalue, scmcurrency, v, vc;
-
-        if (correctscm && ds.pScm) {
-            scmprice = Pricing.fromBackpack(sec, ds.pScm);
-            scmvalue = scmprice.value;
-            scmcurrency = 'metal';
-
-            if (scmvalue > sec.currencies.keys.low) {
-                scmprice = sec.convertToCurrency(scmprice, 'keys');
-                scmcurrency = scmprice.currency;
-            }
-
-            if (scmPrice) inst = sec;
-        }
-
-        if (correctscm && scmPrice) {
-            v = scmvalue;
-            vc = scmcurrency;
-        } else {
-            v = value;
-            vc = currency;
-        }
+            currency = price.currency;
 
         if (!listing) {
             mults = modmults(this);
             if (mults !== 0) {
-                v += mults * modmult;
+                value += mults * modmult;
 
                 clear = true;
-                ds.price = v;
+                ds.price = value;
             }
 
             if (mults || !pricedef) {
                 clear = true;
-                ds.price = v;
+                ds.price = value;
             }
         }
 
-        v = inst.convertFromBC(v, vc);
-        // TODO: fix in econcc
-        if (vc === 'usd') {
-            v *= inst.valueFromRange(inst.currencies.metal).value;
-        }
+        value = ec.convertFromBC(value, currency);
 
-        if (value && currency) {
-            value = ec.convertFromBC(value, currency);
-            if (currency === 'usd') {
-                value *= ec.valueFromRange(ec.currencies.metal).value;
-            }
-        }
-
-        if (scmvalue) {
-            scmvalue = sec.convertFromBC(scmvalue, scmcurrency);
-            if (scmcurrency === 'usd') {
-                scmvalue *= sec.valueFromRange(sec.currencies.metal).value;
-            }
-        }
-
-        o = {value: v || 0.001, currency: vc};
+        o = {value: value || 0.001, currency: currency};
 
         // Disable step for listings
         if (listing) s = {step: EconCC.Disabled};
-        else if (inst.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
+        else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
-        if ((!scmPrice && (mults || !pricedef)) || (scmPrice && correctscm)) {
-            inst.scope(s, function () {
+        if (mults || !pricedef) {
+            ec.scope(s, function () {
                 var f;
 
                 // Exception for keys
-                if (di === '5021') f = inst.formatCurrency(o);
-                else f = inst.format(o, EconCC.Mode.Label).replace('.00', '');
+                if (di === '5021') f = ec.formatCurrency(o);
+                else f = ec.format(o, EconCC.Mode.Label).replace('.00', '');
 
                 eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
             });
         }
 
-        if (correctscm && ds.pScmAll) {
-            ds.pScmAll = sec.format({value: scmvalue, currency: scmcurrency}, EconCC.Mode.Long).replace(' (', ', ').replace(')', '');
-        }
-
         if (tooltips && /key/.test(currency)) {
-            inst.scope(s, function () {
-                eq.attr('title', inst.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
+            ec.scope(s, function () {
+                eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
             });
         }
     });
@@ -170,7 +108,6 @@ function enabled() {
     return Page.appid() === 440 && (
         Prefs.pref('pricetags', 'modmult') !== 0.5 ||
         Prefs.pref('pricetags', 'tooltips') !== false ||
-        Prefs.pref('pricetags', 'correctscm') !== false ||
         !Pricing.default()
     );
 }

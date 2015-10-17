@@ -14,8 +14,7 @@ Prefs.defaults({
     notifications: {updatecount: 'click'},
     pricetags: {
         modmult: 0.5,
-        tooltips: true,
-        correctscm: false
+        tooltips: true
     },
     changes: {
         enabled: true,
