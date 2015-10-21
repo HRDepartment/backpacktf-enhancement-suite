@@ -148,7 +148,7 @@ function listSelection(value) {
         var $this = $(this);
         items.push($this.data('id'));
 
-        $this.find('.equipped').html('<i class="fa fa-spin fa-spinner"></i>');
+        $this.find('.tag.bottom-right').html('<i class="fa fa-spin fa-spinner"></i>');
     });
 
     function next() {
@@ -181,7 +181,7 @@ function listItem(id, value, sample, then) {
             item = $('[data-id="' + id + '"]');
 
         item.css('opacity', 0.6).data('can-sell', 0)
-            .find('.equipped').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
+            .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
         if (!ok && !unsafeWindow.confirm("Error occured, continue listing?")) return;
         if (then) then();

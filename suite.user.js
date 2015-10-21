@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.8.2
+// @version      1.4.9
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -1602,12 +1602,11 @@ function applyTagsToItems(items) {
             ds = this.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
-            eq = $this.find('.equipped'),
             mults = 0,
             s = {},
             o;
 
-        if (!ds.pBptf) return;
+        if (!ds.pBptf || ds.vote || ds.app !== '440') return;
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
             value = price.value,
@@ -1634,7 +1633,8 @@ function applyTagsToItems(items) {
         else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         ec.scope(s, function () {
-            var f;
+            var eq = $this.find('.tag.bottom-right'),
+                f;
 
             if (mults || !pricedef) {
                 // Exception for keys
@@ -1841,7 +1841,7 @@ function listSelection(value) {
         var $this = $(this);
         items.push($this.data('id'));
 
-        $this.find('.equipped').html('<i class="fa fa-spin fa-spinner"></i>');
+        $this.find('.tag.bottom-right').html('<i class="fa fa-spin fa-spinner"></i>');
     });
 
     function next() {
@@ -1874,7 +1874,7 @@ function listItem(id, value, sample, then) {
             item = $('[data-id="' + id + '"]');
 
         item.css('opacity', 0.6).data('can-sell', 0)
-            .find('.equipped').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
+            .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
         if (!ok && !unsafeWindow.confirm("Error occured, continue listing?")) return;
         if (then) then();
@@ -2766,7 +2766,7 @@ function parse(content) {
     return html.find('.item').map(function () {
         var img = this.querySelector('.item-icon').style.backgroundImage;
         this.dataset.imgurl = img.substring(img.indexOf('(') + 1, img.indexOf(')'));
-        this.dataset.avg = this.querySelector('.equipped').innerText;
+        this.dataset.avg = this.querySelector('.tag.bottom-right').innerText;
         return JSON.parse(JSON.stringify(this.dataset));  // force document garbage collection, saves ~15mb of ram
     }).toArray();
 }
@@ -2787,7 +2787,7 @@ function render(unusuals, search) {
             if (matches.length === 10) break;
         }
     }
-    
+
     if (!matches.length) {
         return searchbox.append('<li class="header">No matches</li>');
     }
@@ -2867,7 +2867,7 @@ var users = {
     8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
     8117484140: {badges: [1], color: '#00BBFF', icon: ['medic_ttg_max.5c4b7fcf10ab25fbd166831aea1979395549cb75', 13, [-10, -11]]},
     8005031515: {badges: [1], icon: ['demo_hood.2fa33d5d09dcbfed6345cf927db03c10170b341e', 29, [-2, -5]]},
-    8076020691: {badges: [1], color: '#b9ff0a', icon: ['witchhat_demo.75012466ebcf4d9d81c6d7f75ca646b673114353', 6, [-2, -5]]},
+    8076020691: {badges: [1], color: '#a0d126', icon: ['witchhat_demo.75012466ebcf4d9d81c6d7f75ca646b673114353', 6, [-6, -7]]},
 };
 
 function renderUserBadges(badges) {

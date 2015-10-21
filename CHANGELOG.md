@@ -1,3 +1,6 @@
+### v1.4.9
+Fixed several bugs, some related to recent site updates.
+
 ### v1.4.8
 Fixed rep.tf integration.
 Removed Classifieds listing creation time feature as it is now part of the site.

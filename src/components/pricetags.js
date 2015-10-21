@@ -40,12 +40,11 @@ function applyTagsToItems(items) {
             ds = this.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
-            eq = $this.find('.equipped'),
             mults = 0,
             s = {},
             o;
 
-        if (!ds.pBptf) return;
+        if (!ds.pBptf || ds.vote || ds.app !== '440') return;
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
             value = price.value,
@@ -72,7 +71,8 @@ function applyTagsToItems(items) {
         else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         ec.scope(s, function () {
-            var f;
+            var eq = $this.find('.tag.bottom-right'),
+                f;
 
             if (mults || !pricedef) {
                 // Exception for keys

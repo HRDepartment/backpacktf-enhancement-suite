@@ -13,7 +13,7 @@ function parse(content) {
     return html.find('.item').map(function () {
         var img = this.querySelector('.item-icon').style.backgroundImage;
         this.dataset.imgurl = img.substring(img.indexOf('(') + 1, img.indexOf(')'));
-        this.dataset.avg = this.querySelector('.equipped').innerText;
+        this.dataset.avg = this.querySelector('.tag.bottom-right').innerText;
         return JSON.parse(JSON.stringify(this.dataset));  // force document garbage collection, saves ~15mb of ram
     }).toArray();
 }
@@ -34,7 +34,7 @@ function render(unusuals, search) {
             if (matches.length === 10) break;
         }
     }
-    
+
     if (!matches.length) {
         return searchbox.append('<li class="header">No matches</li>');
     }
