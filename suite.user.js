@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.10
+// @version      1.4.10.1
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -993,7 +993,7 @@ function itemShiftSelect() {
                         }
 
                         $last = $this;
-                        selectItem($select.not(':not(.item)').not('.spacer').add($this));
+                        selectItem($select.add($this));
                     } else {
                         $last = $this;
                         selectItem($this);
@@ -3498,7 +3498,7 @@ exports.VERB = function (url, load, args, method) {
     exports.xhr(args);
 };
 
-exports.GET = function (url, load, args) { exports.VERB(url, load, args, "GET"); };
-exports.POST = function (url, load, args) { exports.VERB(url, load, args, "POST"); };
+exports.GET = function (url, load, args) { exports.VERB(url, load, args || {}, "GET"); };
+exports.POST = function (url, load, args) { exports.VERB(url, load, args || {}, "POST"); };
 
 },{}]},{},[1]);

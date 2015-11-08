@@ -17,5 +17,5 @@ exports.VERB = function (url, load, args, method) {
     exports.xhr(args);
 };
 
-exports.GET = function (url, load, args) { exports.VERB(url, load, args, "GET"); };
-exports.POST = function (url, load, args) { exports.VERB(url, load, args, "POST"); };
+exports.GET = function (url, load, args) { exports.VERB(url, load, args || {}, "GET"); };
+exports.POST = function (url, load, args) { exports.VERB(url, load, args || {}, "POST"); };
