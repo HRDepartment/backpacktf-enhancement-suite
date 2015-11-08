@@ -35,23 +35,22 @@ function applyTagsToItems(items) {
         pricedef = Pricing.default(),
         clear = false;
 
-    items.each(function () {
-        var $this = $(this),
-            ds = this.dataset,
+    [].slice.call(items).forEach(function (item) {
+        var ds = item.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
             mults = 0,
             s = {},
             o;
 
-        if (!ds.pBptf || ds.vote || ds.app !== '440') return;
+        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440') return;
 
-        var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
+        var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf || ds.pScmAll.split(',')[0]),
             value = price.value,
             currency = price.currency;
 
         if (!listing) {
-            mults = modmults(this);
+            mults = modmults(item);
             if (mults !== 0) {
                 value += mults * modmult;
             }
@@ -71,7 +70,7 @@ function applyTagsToItems(items) {
         else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         ec.scope(s, function () {
-            var eq = $this.find('.tag.bottom-right'),
+            var eq = item.querySelector('.tag.bottom-right'),
                 f;
 
             if (mults || !pricedef) {
@@ -79,18 +78,20 @@ function applyTagsToItems(items) {
                 if (di === '5021') f = ec.formatCurrency(o);
                 else f = ec.format(o, EconCC.Mode.Label).replace('.00', '');
 
-                eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
+                eq.innerHTML = (listing ? '<i class="fa fa-tag"></i> ' : '~') + f;
             }
 
             if (tooltips && currency.substr(0, 3) === 'key') {
-                eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
+                eq.setAttribute('title', ec.format(o, EconCC.Mode.Long));
+                eq.setAttribute('data-suite-tooltip', '');
+                eq.classList.add('pricetags-tooltip');
             }
         });
     });
 
     // Clear price cache for updateValues()
     if (clear && Page.bp()) {
-        Script.exec('$("' + items.selector + '").removeData("price");');
+        Script.exec('$(".item").removeData("price");');
         Page.bp().updateValues();
     }
 
@@ -112,7 +113,7 @@ function load() {
 
     if (!enabled()) return;
 
-    items = $('.item[data-p-bptf]');
+    items = document.querySelectorAll('.item');
     if (!items.length) return;
 
     setupInst(function () {

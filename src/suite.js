@@ -1,7 +1,20 @@
+/*!
+ * backpack.tf Enhancement Suite - enhancing your backpack.tf experience
+ * Made by cares <http://steamcommunity.com/id/caresx>
+ *
+ * Post feedback + view instuctions:
+   http://forums.backpack.tf/index.php?/topic/36130-backpacktf-enhancement-suite/
+ * Browse the source code: https://github.com/caresx/backpacktf-enhancement-suite
+ * Changelog:
+   https://github.com/caresx/backpacktf-enhancement-suite/blob/gh-pages/CHANGELOG.md
+ *
+ * Edit your preferences: http://backpack.tf/my/preferences##bes
+ */
+
 var Prefs = require('./preferences'),
     Page = require('./page');
 
-// Not a valid page, don't do anything
+// Ignore non-html pages
 if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefined') return;
 
 Page.init();
@@ -51,6 +64,7 @@ function exec(mod) {
     mod.initialized = true;
 }
 
+exec(require('./components/improvements'));
 if (Prefs.enabled('reptf')) exec(require('./components/reptf'));
 exec(require('./components/quicklist')); // prefs checked inside main
 exec(require('./components/pricetags'));
@@ -60,7 +74,6 @@ exec(require('./components/classifieds'));
 exec(require('./components/prefs'));
 exec(require('./components/search'));
 exec(require('./components/dupes'));
-exec(require('./components/improvements'));
 exec(require('./components/users'));
 
 require('./menu-actions').applyActions();

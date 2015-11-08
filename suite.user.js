@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.9
+// @version      1.4.10
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -18,10 +18,23 @@
 */
 
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/*!
+ * backpack.tf Enhancement Suite - enhancing your backpack.tf experience
+ * Made by cares <http://steamcommunity.com/id/caresx>
+ *
+ * Post feedback + view instuctions:
+   http://forums.backpack.tf/index.php?/topic/36130-backpacktf-enhancement-suite/
+ * Browse the source code: https://github.com/caresx/backpacktf-enhancement-suite
+ * Changelog:
+   https://github.com/caresx/backpacktf-enhancement-suite/blob/gh-pages/CHANGELOG.md
+ *
+ * Edit your preferences: http://backpack.tf/my/preferences##bes
+ */
+
 var Prefs = require('./preferences'),
     Page = require('./page');
 
-// Not a valid page, don't do anything
+// Ignore non-html pages
 if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefined') return;
 
 Page.init();
@@ -71,6 +84,7 @@ function exec(mod) {
     mod.initialized = true;
 }
 
+exec(require('./components/improvements'));
 if (Prefs.enabled('reptf')) exec(require('./components/reptf'));
 exec(require('./components/quicklist')); // prefs checked inside main
 exec(require('./components/pricetags'));
@@ -80,7 +94,6 @@ exec(require('./components/classifieds'));
 exec(require('./components/prefs'));
 exec(require('./components/search'));
 exec(require('./components/dupes'));
-exec(require('./components/improvements'));
 exec(require('./components/users'));
 
 require('./menu-actions').applyActions();
@@ -89,92 +102,22 @@ Page.addTooltips();
 $(document).off('click.bs.button.data-api'); // Fix for bootstrap
 Page.loaded = true;
 
-},{"./api":2,"./components/changes":5,"./components/classifieds":6,"./components/dupes":7,"./components/improvements":8,"./components/prefs":9,"./components/pricetags":10,"./components/quicklist":11,"./components/refresh":12,"./components/reptf":13,"./components/search":14,"./components/users":18,"./menu-actions":20,"./page":21,"./preferences":22}],2:[function(require,module,exports){
+},{"./api":2,"./components/changes":5,"./components/classifieds":6,"./components/dupes":7,"./components/improvements":8,"./components/prefs":9,"./components/pricetags":10,"./components/quicklist":11,"./components/refresh":12,"./components/reptf":13,"./components/search":14,"./components/users":18,"./menu-actions":22,"./page":23,"./preferences":24}],2:[function(require,module,exports){
 var Page = require('./page'),
-    DataStore = require('./datastore'),
+    Key = require('./helpers/apikey'),
+    Queue = require('./helpers/queue'),
     Cache = require('./cache');
 
-var callbacks = [],
-    task = false;
-var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
+var queue, key;
 
-function keyFromPage(body) {
-    var elem = (body.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
-        apikey = elem.substr(5, elem.length - 11);
-
-    return apikey;
-}
-
-function removeKey() {
-    key = null;
-    DataStore.removeItem("backpackapikey");
-}
-
-function registerKey() {
-    var token = Page.csrfToken();
-
-    if (!token) return; // :(
-    $.ajax({
-        method: 'POST',
-        url: "/api/register_do",
-        data: {url: "backpack.tf", comments: "backpack.tf Enhancement Suite", "user-id": token},
-        dataType: 'text'
-    }).then(function (body) {
-        setKey(keyFromPage(body));
-    });
-}
-
-function setKey(apikey) {
-    if (!apikey) return;
-
-    key = apikey;
-    DataStore.setItem("backpackapikey", apikey);
-    processInterface();
-}
-
-function loadKey() {
-    $.ajax({
-        method: 'GET',
-        url: "/api/register",
-        cache: false,
-        dataType: "text"
-    }).then(function (body) {
-        var apikey = keyFromPage(body);
-
-        if (!apikey) {
-            return registerKey();
-        }
-
-        setKey(apikey);
-    });
-}
-
-function requestInterface() {
-    var args = arguments;
-
-    callbacks.push(function () {
-        callInterface.apply(null, args);
-    });
-
-    if (!task && isAvailable()) {
-        processInterface();
-    }
-}
-
-function processInterface() {
-    var next = callbacks.shift();
-    if (next) next();
-}
-
-function callInterface(meta, callback, args) {
+function Icall(meta, callback, args) {
     var iname = meta.name[0] !== 'I' ? 'I' + meta.name : meta.name,
         version = (typeof meta.version === 'string' ? meta.version : 'v' + meta.version),
         url = "/api/" + iname + "/" + version + "/",
-        data = {key: meta.key !== false ? key : null, appid: meta.appid || 440, compress: 1},
+        data = {key: key.key, appid: meta.appid || 440, compress: 1},
         val, signature, wait, i;
 
-    task = true;
     args = args || {};
 
     for (i in args) {
@@ -188,8 +131,7 @@ function callInterface(meta, callback, args) {
         if (val.value) {
             if (val.value.success) {
                 callback(val.value);
-                task = false;
-                processInterface();
+                queue.done();
                 return;
             } else {
                 apicache.rm(signature).save();
@@ -197,6 +139,7 @@ function callInterface(meta, callback, args) {
         }
     }
 
+    function equeue() { queue.enqueue(meta, callback, args); queue.done(); }
     $.ajax({
         method: 'GET',
         url: url,
@@ -210,22 +153,16 @@ function callInterface(meta, callback, args) {
             if (meta._fail) return;
             console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
             if (json.message === "API key does not exist." || json.message === "This API key is not valid.") {
-                removeKey();
-                loadKey();
-                whenAvailable(function () {
-                    callInterface(meta, callback, args);
-                });
+                key.remove();
+                equeue();
+                key.load();
             } else if (/^You can only request this page every/.test(json.message)) {
                 wait = json.message.match(/\d/g)[1] * 1000;
-                setTimeout(function () {
-                    whenAvailable(function () {
-                        callInterface(meta, callback, args);
-                    });
-                }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
+                setTimeout(equeue, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
             } else { // Unknown error, maybe network disconnected
                 setTimeout(function () {
                     meta._fail = true;
-                    callInterface(meta, callback, args);
+                    equeue();
                 }, 1000);
             }
             return;
@@ -240,32 +177,47 @@ function callInterface(meta, callback, args) {
         }
 
         callback(json.response);
-        task = false;
-        processInterface();
+        queue.done();
     });
 }
 
-function isAvailable() { return !!key; }
-function whenAvailable(callback) {
-    if (exports.isAvailable()) callback();
-    else callbacks.push(callback);
-}
+function q() { queue.enqueue.apply(queue, arguments); }
 
 exports.init = function () {
-    if (!key) {
-        loadKey();
-    }
+    queue = new Queue();
+    queue.exec = Icall.bind(queue);
+    queue.canProceed = function () {
+        return !!key.key;
+    }.bind(queue);
+
+    key = new Key("backpackapikey", {url: 'https://backpack.tf/api/register'}, queue.next.bind(queue));
+    key.extract = function (text) {
+        var elem = (text.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
+            apikey = elem.substr(5, elem.length - 11);
+
+        return apikey;
+    }.bind(key);
+    key.register = function () {
+        var token = Page.csrfToken(),
+            self = this;
+
+        if (!token) return; // :(
+        $.ajax({
+            method: 'POST',
+            url: "/api/register_do",
+            data: {url: "backpack.tf", comments: "backpack.tf Enhancement Suite", "user-id": token},
+            dataType: 'text'
+        }).then(function (body) {
+            self.set(self.extract(body));
+        });
+    }.bind(key);
+
+    key.load();
 };
 
-exports.interface = exports.I = exports.call = requestInterface;
-
-exports.whenAvailable = whenAvailable;
-
-exports.APIKey = function () { return key; };
-exports.isAvailable = isAvailable;
-
+exports.interface = exports.I = exports.call = q;
 exports.IGetPrices = function (callback, args) {
-    return requestInterface({
+    return q({
         name: "IGetPrices",
         version: 4,
         cache: 1000 * 60 * 30 // 30m
@@ -273,7 +225,7 @@ exports.IGetPrices = function (callback, args) {
 };
 
 exports.IGetCurrencies = function (callback, args) {
-    return requestInterface({
+    return q({
         name: "IGetCurrencies",
         version: 1,
         cache: 1000 * 60 * 60 * 24 // 24h
@@ -281,7 +233,7 @@ exports.IGetCurrencies = function (callback, args) {
 };
 
 exports.IGetSpecialItems = function (callback, args) {
-    return requestInterface({
+    return q({
         name: "IGetSpecialItems",
         version: 1,
         cache: 1000 * 60 * 60 * 24 // 24h
@@ -292,7 +244,7 @@ exports.IGetUsers = function (ids, callback, args) {
     args = args || {};
 
     args.ids = Array.isArray(ids) ? ids.join(",") : ids;
-    return requestInterface({
+    return q({
         name: "IGetUsers",
         version: 2
     }, callback, args);
@@ -302,13 +254,13 @@ exports.IGetUserListings = function (steamid, callback, args) {
     args = args || {};
 
     args.steamid = steamid;
-    return requestInterface({
+    return q({
         name: "IGetUserListings",
         version: 2
     }, callback, args);
 };
 
-},{"./cache":3,"./datastore":19,"./page":21}],3:[function(require,module,exports){
+},{"./cache":3,"./helpers/apikey":20,"./helpers/queue":21,"./page":23}],3:[function(require,module,exports){
 var DataStore = require('./datastore');
 var names = [];
 
@@ -646,7 +598,7 @@ function load() {
 
 module.exports = load;
 
-},{"../api":2,"../menu-actions":20,"../page":21,"../preferences":22,"../pricing":23}],6:[function(require,module,exports){
+},{"../api":2,"../menu-actions":22,"../page":23,"../preferences":24,"../pricing":25}],6:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     Prefs = require('../preferences'),
@@ -844,7 +796,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":20,"../page":21,"../preferences":22,"../pricing":23,"../script":24,"./pricetags":10}],7:[function(require,module,exports){
+},{"../menu-actions":22,"../page":23,"../preferences":24,"../pricing":25,"../script":26,"./pricetags":10}],7:[function(require,module,exports){
 var Script = require('../script'),
     Page = require('../page'),
     MenuActions = require('../menu-actions');
@@ -964,7 +916,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":20,"../page":21,"../script":24}],8:[function(require,module,exports){
+},{"../menu-actions":22,"../page":23,"../script":26}],8:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Script = require('../script'),
     Pricing = require('../pricing'),
@@ -1005,7 +957,73 @@ function addMorePopovers(more) {
     });
 }
 
-function backpackHandler() {
+function itemShiftSelect() {
+    /* global backpack, selectItem, unselectItem */
+    Script.exec("$('.item:not(.spacer)').off('click');");
+    function _itemShiftSelect() {
+        var $i = $('.item:not(.spacer)'),
+            $last, $select;
+
+        $i.click(function (e) {
+            var $this = $(this),
+                $lidx;
+
+            if (!backpack.selectionMode) {
+                $last = null;
+                if ($this.siblings('.popover').length === 0) {
+                    // Touchscreen compatibility.
+                    // Makes it so a popover must be visible before selection mode can be activated.
+                    return;
+                }
+
+                backpack.selectionMode = true;
+                unselectItem($('.item'));
+                selectItem($this);
+                backpack.updateClearSelectionState();
+            } else {
+                if ($this.hasClass('unselected')) {
+                    if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
+                        e.preventDefault();
+                        document.getSelection().removeAllRanges();
+
+                        if ($lidx > $i.index($this)) {
+                            $select = $last.prevUntil($this);
+                        } else {
+                            $select = $last.nextUntil($this);
+                        }
+
+                        $last = $this;
+                        selectItem($select.not(':not(.item)').not('.spacer').add($this));
+                    } else {
+                        $last = $this;
+                        selectItem($this);
+                    }
+                } else {
+                    $last = null;
+                    unselectItem($this);
+
+                    if ($('.item:not(.unselected)').length === 0) {
+                        backpack.selectionMode = false;
+                        selectItem($('.item'));
+                        backpack.updateClearSelectionState();
+                    }
+                }
+            }
+
+            $('#clear-selection').click(function () {
+                if (!$(this).hasClass('disabled')) {
+                    backpack.clearSelection();
+                }
+            });
+
+            backpack.updateValues();
+        });
+    }
+
+    Script.exec('(' + _itemShiftSelect + '());');
+}
+
+function refValue() {
     var refvalue = $("#refinedvalue");
 
     if (!refvalue.length) return;
@@ -1097,7 +1115,11 @@ function global() {
         });
     }
 
-    if (Page.isBackpack()) backpackHandler();
+    if (Page.isBackpack()) {
+        refValue();
+        itemShiftSelect();
+    }
+
     addUnusualDetailsButtons();
     thirdPartyPrices();
 }
@@ -1189,7 +1211,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":21,"../preferences":22,"../pricing":23,"../script":24}],9:[function(require,module,exports){
+},{"../cache":3,"../page":23,"../preferences":24,"../pricing":25,"../script":26}],9:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
@@ -1559,7 +1581,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../datastore":19,"../page":21,"../preferences":22,"./quicklist":11}],10:[function(require,module,exports){
+},{"../cache":3,"../datastore":19,"../page":23,"../preferences":24,"./quicklist":11}],10:[function(require,module,exports){
 var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
@@ -1597,23 +1619,22 @@ function applyTagsToItems(items) {
         pricedef = Pricing.default(),
         clear = false;
 
-    items.each(function () {
-        var $this = $(this),
-            ds = this.dataset,
+    [].slice.call(items).forEach(function (item) {
+        var ds = item.dataset,
             di = ds.defindex,
             listing = ds.listingSteamid,
             mults = 0,
             s = {},
             o;
 
-        if (!ds.pBptf || ds.vote || ds.app !== '440') return;
+        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440') return;
 
-        var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf),
+        var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf || ds.pScmAll.split(',')[0]),
             value = price.value,
             currency = price.currency;
 
         if (!listing) {
-            mults = modmults(this);
+            mults = modmults(item);
             if (mults !== 0) {
                 value += mults * modmult;
             }
@@ -1633,7 +1654,7 @@ function applyTagsToItems(items) {
         else if (ec.step === EconCC.Enabled) s = {currencies: {keys: {round: 1}}};
 
         ec.scope(s, function () {
-            var eq = $this.find('.tag.bottom-right'),
+            var eq = item.querySelector('.tag.bottom-right'),
                 f;
 
             if (mults || !pricedef) {
@@ -1641,18 +1662,20 @@ function applyTagsToItems(items) {
                 if (di === '5021') f = ec.formatCurrency(o);
                 else f = ec.format(o, EconCC.Mode.Label).replace('.00', '');
 
-                eq.html((listing ? '<i class="fa fa-tag"></i> ' : '~') + f);
+                eq.innerHTML = (listing ? '<i class="fa fa-tag"></i> ' : '~') + f;
             }
 
             if (tooltips && currency.substr(0, 3) === 'key') {
-                eq.attr('title', ec.format(o, EconCC.Mode.Long)).attr('data-suite-tooltip', '').addClass('pricetags-tooltip');
+                eq.setAttribute('title', ec.format(o, EconCC.Mode.Long));
+                eq.setAttribute('data-suite-tooltip', '');
+                eq.classList.add('pricetags-tooltip');
             }
         });
     });
 
     // Clear price cache for updateValues()
     if (clear && Page.bp()) {
-        Script.exec('$("' + items.selector + '").removeData("price");');
+        Script.exec('$(".item").removeData("price");');
         Page.bp().updateValues();
     }
 
@@ -1674,7 +1697,7 @@ function load() {
 
     if (!enabled()) return;
 
-    items = $('.item[data-p-bptf]');
+    items = document.querySelectorAll('.item');
     if (!items.length) return;
 
     setupInst(function () {
@@ -1690,7 +1713,7 @@ module.exports.setupInst = setupInst;
 module.exports.applyTagsToItems = applyTagsToItems;
 module.exports.enabled = enabled;
 
-},{"../page":21,"../preferences":22,"../pricing":23,"../script":24}],11:[function(require,module,exports){
+},{"../page":23,"../preferences":24,"../pricing":25,"../script":26}],11:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
     DataStore = require('../datastore'),
@@ -2032,7 +2055,7 @@ function load() {
 module.exports = load;
 module.exports.modifyQuicklists = modifyQuicklists;
 
-},{"../datastore":19,"../page":21,"../preferences":22,"../script":24}],12:[function(require,module,exports){
+},{"../datastore":19,"../page":23,"../preferences":24,"../script":26}],12:[function(require,module,exports){
 var MenuActions = require('../menu-actions');
 var Script = require('../script');
 
@@ -2132,7 +2155,7 @@ function load() {
 
 module.exports = load;
 
-},{"../menu-actions":20,"../script":24}],13:[function(require,module,exports){
+},{"../menu-actions":22,"../script":26}],13:[function(require,module,exports){
 var Script = require('../script'),
     Cache = require('../cache'),
     Page = require('../page');
@@ -2312,7 +2335,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../page":21,"../script":24}],14:[function(require,module,exports){
+},{"../cache":3,"../page":23,"../script":26}],14:[function(require,module,exports){
 var Script = require('../script');
 
 // function (rgb) { return ((parseInt(rgb.substr(0, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(2, 2), 16) - 45).toString(16) + (parseInt(rgb.substr(4, 2), 16) - 45).toString(16)).toUpperCase(); }
@@ -2506,7 +2529,7 @@ function load() {
 
 module.exports = load;
 
-},{"../script":24,"./searchscopes/classifieds":15,"./searchscopes/scm":16,"./searchscopes/unusuals":17}],15:[function(require,module,exports){
+},{"../script":26,"./searchscopes/classifieds":15,"./searchscopes/scm":16,"./searchscopes/unusuals":17}],15:[function(require,module,exports){
 var Pricing = require('../../pricing'),
     Page = require('../../page');
 var Search, ec;
@@ -2598,7 +2621,7 @@ exports.register = function (s) {
     s.register(["classifieds", "classified", "cl", "c"], {load: request, render: render});
 };
 
-},{"../../page":21,"../../pricing":23}],16:[function(require,module,exports){
+},{"../../page":23,"../../pricing":25}],16:[function(require,module,exports){
 var Pricing = require('../../pricing'),
     CC = require('../cc'),
     Page = require('../../page');
@@ -2750,7 +2773,7 @@ exports.register = function (s) {
     s.register(names, {load: requestQuery, render: parseQuery});
 };
 
-},{"../../page":21,"../../pricing":23,"../cc":4}],17:[function(require,module,exports){
+},{"../../page":23,"../../pricing":25,"../cc":4}],17:[function(require,module,exports){
 var Search, unusualPage;
 
 function request(query, scope, search) {
@@ -2944,7 +2967,7 @@ function load() {
 
 module.exports = load;
 
-},{"../page":21}],19:[function(require,module,exports){
+},{"../page":23}],19:[function(require,module,exports){
 exports.setItem = function (name, value) {
     return GM_setValue(name, value);
 };
@@ -2967,6 +2990,101 @@ exports.removeItem = function (name) {
 };
 
 },{}],20:[function(require,module,exports){
+var DataStore = require('../datastore'),
+    Script = require('../script');
+
+function Key(field, loadconf, done) {
+    this.field = field;
+    this.loadconf = loadconf;
+    this.done = done;
+    this.key = '';
+}
+
+Key.prototype.register = function () {throw new Error('abstract method register not reimplemented');};
+Key.prototype.extract = function (/*text*/) {throw new Error('abstract method extract not reimplemented');};
+
+Key.prototype.obtain = function () {
+    var self = this;
+    Script[this.loadconf.method || "GET"](this.loadconf.url, function (body) {
+        var key = self.extract(body);
+
+        if (key) {
+            self.set(key);
+            self.ready();
+        } else {
+            self.register();
+        }
+    });
+};
+
+Key.prototype.set = function (key) {
+    if (!key) return;
+
+    this.key = key;
+    DataStore.setItem(this.field, key);
+};
+
+Key.prototype.remove = function () {
+    this.key = null;
+    DataStore.removeItem(this.field);
+};
+
+Key.prototype.ready = function () {
+    this.done();
+};
+
+Key.prototype.load = function () {
+    var storedkey = DataStore.getItem(this.field);
+
+    if (storedkey) {
+        this.key = storedkey;
+        this.ready();
+    } else {
+        this.obtain();
+    }
+};
+
+module.exports = Key;
+
+},{"../datastore":19,"../script":26}],21:[function(require,module,exports){
+function Queue() {
+    this.queue = [];
+    this.busy = false;
+}
+
+Queue.prototype.enqueue = function () {
+    var args = arguments,
+        self = this;
+
+    this.queue.push(function () {
+        self.exec.apply(self, args);
+    });
+
+    if (this.canProceed() && !this.busy) {
+        this.next();
+    }
+};
+
+Queue.prototype.next = function () {
+    if (this.busy) return;
+    var next = this.queue.shift();
+
+    if (next) {
+        this.busy = true;
+        next();
+    }
+};
+
+Queue.prototype.exec = function () {throw new Error('abstract method exec not reimplemented');};
+Queue.prototype.canProceed = function () { return true; };
+Queue.prototype.done = function () {
+    this.busy = false;
+    this.next();
+};
+
+module.exports = Queue;
+
+},{}],22:[function(require,module,exports){
 var Page = require('./page');
 var actions = [];
 
@@ -3001,7 +3119,7 @@ exports.applyActions = function () {
     actions = [];
 };
 
-},{"./page":21}],21:[function(require,module,exports){
+},{"./page":23}],23:[function(require,module,exports){
 var Script = require('./script');
 
 var nonNumerical = /\D/g;
@@ -3187,7 +3305,7 @@ exports.addStyle = function (css) {
 exports.bp = function () { return unsafeWindow.backpack; };
 exports.SUITE_VERSION = GM_info.script.version;
 
-},{"./script":24}],22:[function(require,module,exports){
+},{"./script":26}],24:[function(require,module,exports){
 var DataStore = require('./datastore');
 var preferences = loadFromDS();
 
@@ -3285,7 +3403,7 @@ function applyPrefs(prefs) {
     return exports;
 }
 
-},{"./datastore":19}],23:[function(require,module,exports){
+},{"./datastore":19}],25:[function(require,module,exports){
 var Prefs = require('./preferences'),
     API = require('./api'),
     ec, cur;
@@ -3360,7 +3478,7 @@ exports.fromBackpack = function (ec, price) {
     return {value: ec.convertToBC(val), currency: val.currency};
 };
 
-},{"./api":2,"./preferences":22}],24:[function(require,module,exports){
+},{"./api":2,"./preferences":24}],26:[function(require,module,exports){
 exports.exec = function (code) {
     var scr = document.createElement('script'),
         elem = (document.body || document.head || document.documentElement);
@@ -3369,5 +3487,18 @@ exports.exec = function (code) {
     elem.appendChild(scr);
     elem.removeChild(scr);
 };
+
+exports.xhr = GM_xmlhttpRequest;
+exports.VERB = function (url, load, args, method) {
+    args.method = method;
+    args.url = url;
+    args.onload = function (resp) {
+        load(resp.responseText);
+    };
+    exports.xhr(args);
+};
+
+exports.GET = function (url, load, args) { exports.VERB(url, load, args, "GET"); };
+exports.POST = function (url, load, args) { exports.VERB(url, load, args, "POST"); };
 
 },{}]},{},[1]);

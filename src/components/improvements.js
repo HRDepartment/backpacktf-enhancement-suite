@@ -38,7 +38,73 @@ function addMorePopovers(more) {
     });
 }
 
-function backpackHandler() {
+function itemShiftSelect() {
+    /* global backpack, selectItem, unselectItem */
+    Script.exec("$('.item:not(.spacer)').off('click');");
+    function _itemShiftSelect() {
+        var $i = $('.item:not(.spacer)'),
+            $last, $select;
+
+        $i.click(function (e) {
+            var $this = $(this),
+                $lidx;
+
+            if (!backpack.selectionMode) {
+                $last = null;
+                if ($this.siblings('.popover').length === 0) {
+                    // Touchscreen compatibility.
+                    // Makes it so a popover must be visible before selection mode can be activated.
+                    return;
+                }
+
+                backpack.selectionMode = true;
+                unselectItem($('.item'));
+                selectItem($this);
+                backpack.updateClearSelectionState();
+            } else {
+                if ($this.hasClass('unselected')) {
+                    if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
+                        e.preventDefault();
+                        document.getSelection().removeAllRanges();
+
+                        if ($lidx > $i.index($this)) {
+                            $select = $last.prevUntil($this);
+                        } else {
+                            $select = $last.nextUntil($this);
+                        }
+
+                        $last = $this;
+                        selectItem($select.add($this));
+                    } else {
+                        $last = $this;
+                        selectItem($this);
+                    }
+                } else {
+                    $last = null;
+                    unselectItem($this);
+
+                    if ($('.item:not(.unselected)').length === 0) {
+                        backpack.selectionMode = false;
+                        selectItem($('.item'));
+                        backpack.updateClearSelectionState();
+                    }
+                }
+            }
+
+            $('#clear-selection').click(function () {
+                if (!$(this).hasClass('disabled')) {
+                    backpack.clearSelection();
+                }
+            });
+
+            backpack.updateValues();
+        });
+    }
+
+    Script.exec('(' + _itemShiftSelect + '());');
+}
+
+function refValue() {
     var refvalue = $("#refinedvalue");
 
     if (!refvalue.length) return;
@@ -130,7 +196,11 @@ function global() {
         });
     }
 
-    if (Page.isBackpack()) backpackHandler();
+    if (Page.isBackpack()) {
+        refValue();
+        itemShiftSelect();
+    }
+
     addUnusualDetailsButtons();
     thirdPartyPrices();
 }

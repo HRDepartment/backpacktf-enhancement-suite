@@ -1,3 +1,8 @@
+### v1.4.10
+Multiple items in user backpacks can now be selected at once by holding down shift. Note: only works for items on the same backpack page.
+API error handling should now be more robust.
+Fixed pricetag prefs not being applied to items with only an SCM price. (Killstreaks etc.)
+
 ### v1.4.9
 Fixed several bugs, some related to recent site updates.
 

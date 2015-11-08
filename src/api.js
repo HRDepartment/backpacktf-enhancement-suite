@@ -1,88 +1,18 @@
 var Page = require('./page'),
-    DataStore = require('./datastore'),
+    Key = require('./helpers/apikey'),
+    Queue = require('./helpers/queue'),
     Cache = require('./cache');
 
-var callbacks = [],
-    task = false;
-var key = DataStore.getItem("backpackapikey");
 var apicache = new Cache("bes-cache-api");
+var queue, key;
 
-function keyFromPage(body) {
-    var elem = (body.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
-        apikey = elem.substr(5, elem.length - 11);
-
-    return apikey;
-}
-
-function removeKey() {
-    key = null;
-    DataStore.removeItem("backpackapikey");
-}
-
-function registerKey() {
-    var token = Page.csrfToken();
-
-    if (!token) return; // :(
-    $.ajax({
-        method: 'POST',
-        url: "/api/register_do",
-        data: {url: "backpack.tf", comments: "backpack.tf Enhancement Suite", "user-id": token},
-        dataType: 'text'
-    }).then(function (body) {
-        setKey(keyFromPage(body));
-    });
-}
-
-function setKey(apikey) {
-    if (!apikey) return;
-
-    key = apikey;
-    DataStore.setItem("backpackapikey", apikey);
-    processInterface();
-}
-
-function loadKey() {
-    $.ajax({
-        method: 'GET',
-        url: "/api/register",
-        cache: false,
-        dataType: "text"
-    }).then(function (body) {
-        var apikey = keyFromPage(body);
-
-        if (!apikey) {
-            return registerKey();
-        }
-
-        setKey(apikey);
-    });
-}
-
-function requestInterface() {
-    var args = arguments;
-
-    callbacks.push(function () {
-        callInterface.apply(null, args);
-    });
-
-    if (!task && isAvailable()) {
-        processInterface();
-    }
-}
-
-function processInterface() {
-    var next = callbacks.shift();
-    if (next) next();
-}
-
-function callInterface(meta, callback, args) {
+function Icall(meta, callback, args) {
     var iname = meta.name[0] !== 'I' ? 'I' + meta.name : meta.name,
         version = (typeof meta.version === 'string' ? meta.version : 'v' + meta.version),
         url = "/api/" + iname + "/" + version + "/",
-        data = {key: meta.key !== false ? key : null, appid: meta.appid || 440, compress: 1},
+        data = {key: key.key, appid: meta.appid || 440, compress: 1},
         val, signature, wait, i;
 
-    task = true;
     args = args || {};
 
     for (i in args) {
@@ -96,8 +26,7 @@ function callInterface(meta, callback, args) {
         if (val.value) {
             if (val.value.success) {
                 callback(val.value);
-                task = false;
-                processInterface();
+                queue.done();
                 return;
             } else {
                 apicache.rm(signature).save();
@@ -105,6 +34,7 @@ function callInterface(meta, callback, args) {
         }
     }
 
+    function equeue() { queue.enqueue(meta, callback, args); queue.done(); }
     $.ajax({
         method: 'GET',
         url: url,
@@ -118,22 +48,16 @@ function callInterface(meta, callback, args) {
             if (meta._fail) return;
             console.error('API error :: ' + iname + ': ' + JSON.stringify(json));
             if (json.message === "API key does not exist." || json.message === "This API key is not valid.") {
-                removeKey();
-                loadKey();
-                whenAvailable(function () {
-                    callInterface(meta, callback, args);
-                });
+                key.remove();
+                equeue();
+                key.load();
             } else if (/^You can only request this page every/.test(json.message)) {
                 wait = json.message.match(/\d/g)[1] * 1000;
-                setTimeout(function () {
-                    whenAvailable(function () {
-                        callInterface(meta, callback, args);
-                    });
-                }, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
+                setTimeout(equeue, wait + 100 + Math.round(Math.random() * 1000)); // to be safe, protection against race conditions
             } else { // Unknown error, maybe network disconnected
                 setTimeout(function () {
                     meta._fail = true;
-                    callInterface(meta, callback, args);
+                    equeue();
                 }, 1000);
             }
             return;
@@ -148,32 +72,47 @@ function callInterface(meta, callback, args) {
         }
 
         callback(json.response);
-        task = false;
-        processInterface();
+        queue.done();
     });
 }
 
-function isAvailable() { return !!key; }
-function whenAvailable(callback) {
-    if (exports.isAvailable()) callback();
-    else callbacks.push(callback);
-}
+function q() { queue.enqueue.apply(queue, arguments); }
 
 exports.init = function () {
-    if (!key) {
-        loadKey();
-    }
+    queue = new Queue();
+    queue.exec = Icall.bind(queue);
+    queue.canProceed = function () {
+        return !!key.key;
+    }.bind(queue);
+
+    key = new Key("backpackapikey", {url: 'https://backpack.tf/api/register'}, queue.next.bind(queue));
+    key.extract = function (text) {
+        var elem = (text.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
+            apikey = elem.substr(5, elem.length - 11);
+
+        return apikey;
+    }.bind(key);
+    key.register = function () {
+        var token = Page.csrfToken(),
+            self = this;
+
+        if (!token) return; // :(
+        $.ajax({
+            method: 'POST',
+            url: "/api/register_do",
+            data: {url: "backpack.tf", comments: "backpack.tf Enhancement Suite", "user-id": token},
+            dataType: 'text'
+        }).then(function (body) {
+            self.set(self.extract(body));
+        });
+    }.bind(key);
+
+    key.load();
 };
 
-exports.interface = exports.I = exports.call = requestInterface;
-
-exports.whenAvailable = whenAvailable;
-
-exports.APIKey = function () { return key; };
-exports.isAvailable = isAvailable;
-
+exports.interface = exports.I = exports.call = q;
 exports.IGetPrices = function (callback, args) {
-    return requestInterface({
+    return q({
         name: "IGetPrices",
         version: 4,
         cache: 1000 * 60 * 30 // 30m
@@ -181,7 +120,7 @@ exports.IGetPrices = function (callback, args) {
 };
 
 exports.IGetCurrencies = function (callback, args) {
-    return requestInterface({
+    return q({
         name: "IGetCurrencies",
         version: 1,
         cache: 1000 * 60 * 60 * 24 // 24h
@@ -189,7 +128,7 @@ exports.IGetCurrencies = function (callback, args) {
 };
 
 exports.IGetSpecialItems = function (callback, args) {
-    return requestInterface({
+    return q({
         name: "IGetSpecialItems",
         version: 1,
         cache: 1000 * 60 * 60 * 24 // 24h
@@ -200,7 +139,7 @@ exports.IGetUsers = function (ids, callback, args) {
     args = args || {};
 
     args.ids = Array.isArray(ids) ? ids.join(",") : ids;
-    return requestInterface({
+    return q({
         name: "IGetUsers",
         version: 2
     }, callback, args);
@@ -210,7 +149,7 @@ exports.IGetUserListings = function (steamid, callback, args) {
     args = args || {};
 
     args.steamid = steamid;
-    return requestInterface({
+    return q({
         name: "IGetUserListings",
         version: 2
     }, callback, args);
