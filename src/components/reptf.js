@@ -5,7 +5,7 @@ var Script = require('../script'),
 var bans = [],
     bansShown = false,
     cachePruneTime = 60 * 30 * 1000, // 30 minutes (in ms)
-    banIssuers = ["srBans", "bzBans", "opBans", "stfBans", "bptfBans"],
+    issuers = ["srBans", "bzBans", "opBans", "stfBans", "bptfBans"],
     reptfSuccess = true,
     steamid, repCache;
 
@@ -16,7 +16,7 @@ function addMiniProfileButton() {
         profile.find('.stm-tf2outpost').parent().html('<i class=\"stm stm-tf2outpost\"></i> Outpost');
         profile.find('.stm-bazaar-tf').parent().html('<i class=\"stm stm-bazaar-tf\"></i> Bazaar');
         profile.find('.mini-profile-third-party').append(
-            ' <a class=\"btn btn-default btn-xs\" target=\"_blank\" href=\"http://rep.tf/'+ element.attr('data-id')+'\">'+
+            ' <a class=\"btn btn-default btn-xs\" target=\"_blank\" href=\"https://rep.tf/'+ element.attr('data-id')+'\">'+
             '<i class=\"fa fa-check-square\"></i> RepTF</a>'
         );
         return profile;
@@ -29,7 +29,7 @@ function addMiniProfileButton() {
 function showBansModal() {
     if (!bans.length) return;
 
-    var html = "<b style='color:red'>User is banned on</b> ⋅ <a href='http://rep.tf/" + steamid + "' target='_blank'>rep.tf</a><br><br><ul>";
+    var html = "<b style='color:red'>User is banned on</b> ⋅ <a href='https://rep.tf/" + steamid + "' target='_blank'>rep.tf</a><br><br><ul>";
     bans.forEach(function (ban) {
         html += "<li><b>" + ban.name + "</b> - " + ban.reason + "</li>";
     });
@@ -39,19 +39,18 @@ function showBansModal() {
 }
 
 function addProfileButtons() {
-    $('.btn > .stm-tf2outpost').parent().after(' <a class="btn btn-primary btn-xs" href="http://rep.tf/' + steamid + '" target="_blank"><i class="fa fa-check-square"></i> rep.tf</a>');
+    $('.btn > .stm-tf2outpost').parent().after(' <a class="btn btn-primary btn-xs" href="https://rep.tf/' + steamid + '" target="_blank"><i class="fa fa-check-square"></i> rep.tf</a>');
     $('small:contains(Community)').html('Community <a id="showrep" style="font-size: 14px; cursor: pointer;">+</a>');
 
-    $('#showrep').on('click', function () {
-        var $this = $(this),
-            open = $this.text() === '+';
+    $('#showrep').click(function () {
+        var open = this.textContent === '+';
 
         if (open && !bansShown) {
             showBansModal();
             bansShown = true;
         }
 
-        $this.text(open ? '-' : '+');
+        this.textContent = open ? '-' : '+';
         $('.rep-entry').toggle(open);
     });
 }
@@ -89,7 +88,7 @@ function checkBans() {
 function compactResponse(json) {
     var compact = {success: json.success};
 
-    banIssuers.forEach(function (issuer) {
+    issuers.forEach(function (issuer) {
         if (!json[issuer]) return;
         compact[issuer] = {banned: json[issuer].banned, message: json[issuer].message};
     });
@@ -98,34 +97,29 @@ function compactResponse(json) {
 }
 
 function updateCache() {
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: "https://rep.tf/api/bans?str=" + steamid,
-        headers: {Referer: 'https://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://rep.tf'},
-        onload: function (resp) {
-            var json;
+    Script.POST("https://rep.tf/api/bans?str=" + steamid, function (resp) {
+        var json;
 
-            try {
-                json = compactResponse(JSON.parse(resp.responseText));
-            } catch (ex) {
-                json = {success: false};
-            }
-
-            reptfSuccess = json.success;
-            repCache.set(steamid, json);
-            if (json.success) repCache.save();
-
-            showBans(json);
+        try {
+            json = compactResponse(JSON.parse(resp));
+        } catch (ex) {
+            json = {success: false};
         }
-    });
+
+        reptfSuccess = json.success;
+        repCache.set(steamid, json);
+        if (json.success) repCache.save();
+
+        showBans(json);
+    },
+    {headers: {Referer: 'https://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://rep.tf'}}
+   );
 }
 
 function addRepTooltips() {
     $('.rep-tooltip').tooltip({
         html: true,
-        title: function () {
-            return $(this).data('content');
-        }
+        title: function () { return this.dataset.content; }
     });
 }
 
@@ -159,7 +153,7 @@ function showBans(json) {
     ban("Backpack.tf", json.bptfBans);
 
     addRepTooltips();
-    $('#showrep').css('color', reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E');
+    Page.$id('showrep').style.color = reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E';
 }
 
 function load() {

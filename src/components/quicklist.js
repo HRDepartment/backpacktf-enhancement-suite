@@ -112,7 +112,7 @@ function selectQuicklist() {
     html += "</div><br>";
     html += quicklistBtnHtml("", "", "", "", false);
 
-    unsafeWindow.modal("List Items", html, '<a class="btn btn-default btn-primary ql-action-button" data-action="listbatch">List Batch</a>');
+    Page.modal("List Items", html, '<a class="btn btn-default btn-primary ql-action-button" data-action="listbatch">List Batch</a>');
 
     $("#ql-cloned-batch").html(selection.clone()).find('.item').addClass('ql-cloned');
     $("#ql-button-listing .ql-select-msg").last().css('margin-bottom', '-8px');
@@ -183,7 +183,7 @@ function listItem(id, value, sample, then) {
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !unsafeWindow.confirm("Error occured, continue listing?")) return;
+        if (!ok && !Script.exec("confirm('Error occured, continue listing?');")) return;
         if (then) then();
     });
 }
@@ -247,15 +247,12 @@ function modifyQuicklists() {
     });
 }
 
-function selectItem(element) { element.removeClass('unselected'); }
-function unselectItem(element) { element.addClass('unselected'); }
-
 function addSelectPage() {
     var backpack = Page.bp();
 
     function selectItems(items) {
         backpack.selectionMode = true;
-        selectItem(items);
+        Page.selectItem(items);
 
         backpack.updateClearSelectionState();
         backpack.updateValues();
@@ -269,17 +266,17 @@ function addSelectPage() {
 
         if (backpack.selectionMode) {
             if (pageitems.length === pageitems.not('.unselected').length) { // all == selected
-                unselectItem(pageitems);
+                Page.unselectItem(pageitems);
 
                 if ($('.item:not(.unselected)').length === 0) {
                     _clearSelection();
                     return;
                 }
             } else {
-                selectItems(pageitems);
+                Page.selectItems(pageitems);
             }
         } else {
-            unselectItem($('.item'));
+            Page.unselectItem($('.item'));
             selectItems(pageitems);
         }
     });
@@ -315,9 +312,12 @@ function addHooks() {
         }
     });
 
-    Script.exec("var old_updateDisplay = window.backpack.updateDisplay;"+
-                addSelectPageButtons+
-                "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }");
+    Script.exec(
+        "$(function () {"+ // FF support
+            "var old_updateDisplay = window.backpack.updateDisplay;"+
+            addSelectPageButtons+
+            "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }"+
+        "});");
 }
 
 function load() {

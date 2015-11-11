@@ -2,6 +2,7 @@ var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
     DataStore = require('../datastore'),
+    Key = require('../helpers/apikey'),
     Cache = require('../cache');
 
 function addTab() {
@@ -273,7 +274,9 @@ function clearCache() {
         DataStore.removeItem(name);
     });
 
-    DataStore.removeItem("backpackapikey");
+    Key.keys.forEach(function (k) {
+        DataStore.removeItem(k.field);
+    });
     location.reload();
 }
 

@@ -39,69 +39,65 @@ function addMorePopovers(more) {
 }
 
 function itemShiftSelect() {
-    /* global backpack, selectItem, unselectItem */
+    var backpack = Page.bp(),
+        $i = $('.item:not(.spacer)'),
+        $last, $select;
+
     Script.exec("$('.item:not(.spacer)').off('click');");
-    function _itemShiftSelect() {
-        var $i = $('.item:not(.spacer)'),
-            $last, $select;
+    $i.click(function (e) {
+        var $this = $(this),
+            $lidx;
 
-        $i.click(function (e) {
-            var $this = $(this),
-                $lidx;
-
-            if (!backpack.selectionMode) {
-                $last = null;
-                if ($this.siblings('.popover').length === 0) {
-                    // Touchscreen compatibility.
-                    // Makes it so a popover must be visible before selection mode can be activated.
-                    return;
-                }
-
-                backpack.selectionMode = true;
-                unselectItem($('.item'));
-                selectItem($this);
-                backpack.updateClearSelectionState();
-            } else {
-                if ($this.hasClass('unselected')) {
-                    if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
-                        e.preventDefault();
-                        document.getSelection().removeAllRanges();
-
-                        if ($lidx > $i.index($this)) {
-                            $select = $last.prevUntil($this);
-                        } else {
-                            $select = $last.nextUntil($this);
-                        }
-
-                        $last = $this;
-                        selectItem($select.add($this));
-                    } else {
-                        $last = $this;
-                        selectItem($this);
-                    }
-                } else {
-                    $last = null;
-                    unselectItem($this);
-
-                    if ($('.item:not(.unselected)').length === 0) {
-                        backpack.selectionMode = false;
-                        selectItem($('.item'));
-                        backpack.updateClearSelectionState();
-                    }
-                }
+        if (!backpack.selectionMode) {
+            $last = null;
+            if ($this.siblings('.popover').length === 0) {
+                // Touchscreen compatibility.
+                // Makes it so a popover must be visible before selection mode can be activated.
+                return;
             }
 
-            $('#clear-selection').click(function () {
-                if (!$(this).hasClass('disabled')) {
-                    backpack.clearSelection();
+            backpack.selectionMode = true;
+            Page.unselectItem($('.item'));
+            Page.selectItem($this);
+            backpack.updateClearSelectionState();
+        } else {
+            if ($this.hasClass('unselected')) {
+                if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
+                    e.preventDefault();
+                    document.getSelection().removeAllRanges();
+
+                    if ($lidx > $i.index($this)) {
+                        $select = $last.prevUntil($this);
+                    } else {
+                        $select = $last.nextUntil($this);
+                    }
+
+                    $last = $this;
+                    Page.selectItem($select.add($this));
+                } else {
+                    $last = $this;
+                    Page.selectItem($this);
                 }
-            });
+            } else {
+                $last = null;
+                Page.unselectItem($this);
 
-            backpack.updateValues();
+                if ($('.item:not(.unselected)').length === 0) {
+                    backpack.selectionMode = false;
+                    Page.selectItem($('.item'));
+                    backpack.updateClearSelectionState();
+                }
+            }
+        }
+
+        $('#clear-selection').click(function () {
+            if (!$(this).hasClass('disabled')) {
+                backpack.clearSelection();
+            }
         });
-    }
 
-    Script.exec('(' + _itemShiftSelect + '());');
+        backpack.updateValues();
+    });
 }
 
 function refValue() {
@@ -173,16 +169,14 @@ function global() {
     if (more.length) addMorePopovers(more);
 
     $('.navbar-game-select li a').each(function () {
-        var appid = +this.href.replace(/\D/g, "");
+        var appid = +this.href.replace(/\D/g, ""),
+            sub = "";
 
-        if (appid === 440) {
-            this.href = "http://backpack.tf" + location.pathname;
-        } else if (appid === 570) {
-            this.href = "http://dota2.backpack.tf" + location.pathname;
-        } else if (appid === 730) {
-            this.href = "http://csgo.backpack.tf" + location.pathname;
-        }
+        //if (appid === 440) // Nothing special
+        if (appid === 570) sub += "dota2.";
+        else if (appid === 730) sub += "csgo.";
 
+        this.href = "http://" + sub + "backpack.tf" + location.pathname;
         this.target = "_blank";
      });
 
@@ -209,15 +203,11 @@ function updateWallpaperCache(url, then) {
     var wallcache = new Cache("bes-cache-wallpaper", 0);
 
     if (wallcache.get("url").value !== url) {
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: url,
-            onload: function (resp) {
-                var wp = resp.responseText.replace(/\r/g, "").split("\n");
+        Script.GET(url, function (resp) {
+            var wp = resp.replace(/\r/g, "").split("\n");
 
-                wallcache.set("url", url).set("wallpapers", wp).save();
-                then(wp);
-            }
+            wallcache.set("url", url).set("wallpapers", wp).save();
+            then(wp);
         });
     } else {
         then(wallcache.get("wallpapers").value);

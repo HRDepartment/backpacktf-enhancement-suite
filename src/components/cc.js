@@ -1,13 +1,14 @@
 // http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP
-var Cache = require('../cache');
+var Cache = require('../cache'),
+    Script = require('../script');
 
 var ccCache, inst;
 
 var ccFormats = {
-	"USD": {sym: "$", thousand: ",", decimal: "."},
-	"EUR": {sym: "€", thousand: " ", decimal: ","},
-	"RUB": {sym: " pуб.", thousand: "", decimal: ","},
-	"GBP": {sym: "£", thousand: ",", decimal: "."},
+    "USD": {sym: "$", thousand: ",", decimal: "."},
+    "EUR": {sym: "€", thousand: " ", decimal: ","},
+    "RUB": {sym: " pуб.", thousand: "", decimal: ","},
+    "GBP": {sym: "£", thousand: ",", decimal: "."},
 };
 
 function symToAlpha(sym) {
@@ -19,8 +20,8 @@ function symToAlpha(sym) {
 }
 
 function extractSymbol(str) {
-	var match = str.match(/(?:\$|€|£| pуб\.)/);
-	return match ? match[0] : "";
+    var match = str.match(/(?:\$|€|£| pуб\.)/);
+    return match ? match[0] : "";
 }
 
 function CC(rates) {
@@ -42,30 +43,26 @@ CC.prototype.convert = function (val, f, t) {
 CC.prototype.convertFromBase = function (val, t) { return this.convert(val, this.base, t); };
 CC.prototype.convertToBase = function (val, f) { return this.convert(val, f, this.base); };
 CC.prototype.parse = function (str) {
-	var sym = extractSymbol(str),
+    var sym = extractSymbol(str),
         alpha = symToAlpha(sym),
         format = ccFormats[alpha] || {},
         val = parseFloat(str.replace(new RegExp(format.thousand, "g"), '').replace(format.decimal, '.').replace(/[^\d|\.]+/g, '').trim());
 
-	return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
+    return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
 };
 
 function update(then) {
-    GM_xmlhttpRequest({
-        method: "GET",
-        url: "http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP",
-        onload: function (resp) {
-            var json;
+    Script.GET("http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP", function (resp) {
+        var json;
 
-            try {
-                json = JSON.parse(resp.responseText);
-            } catch (ex) {
-                return;
-            }
-
-            ccCache.set("rates", json).save();
-            then(inst = new CC(json));
+        try {
+            json = JSON.parse(resp);
+        } catch (ex) {
+            return;
         }
+
+        ccCache.set("rates", json).save();
+        then(inst = new CC(json));
     });
 }
 

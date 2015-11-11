@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.10.1
+// @version      1.4.10.2
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -35,7 +35,7 @@ var Prefs = require('./preferences'),
     Page = require('./page');
 
 // Ignore non-html pages
-if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefined') return;
+if (!document.getElementById("helpers")) return;
 
 Page.init();
 require('./api').init();
@@ -192,10 +192,7 @@ exports.init = function () {
 
     key = new Key("backpackapikey", {url: 'https://backpack.tf/api/register'}, queue.next.bind(queue));
     key.extract = function (text) {
-        var elem = (text.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
-            apikey = elem.substr(5, elem.length - 11);
-
-        return apikey;
+        return (text.match(/<pre>([a-f\d]{24})<\/pre>/) || [])[1];
     }.bind(key);
     key.register = function () {
         var token = Page.csrfToken(),
@@ -325,15 +322,16 @@ module.exports.names = names;
 
 },{"./datastore":19}],4:[function(require,module,exports){
 // http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP
-var Cache = require('../cache');
+var Cache = require('../cache'),
+    Script = require('../script');
 
 var ccCache, inst;
 
 var ccFormats = {
-	"USD": {sym: "$", thousand: ",", decimal: "."},
-	"EUR": {sym: "€", thousand: " ", decimal: ","},
-	"RUB": {sym: " pуб.", thousand: "", decimal: ","},
-	"GBP": {sym: "£", thousand: ",", decimal: "."},
+    "USD": {sym: "$", thousand: ",", decimal: "."},
+    "EUR": {sym: "€", thousand: " ", decimal: ","},
+    "RUB": {sym: " pуб.", thousand: "", decimal: ","},
+    "GBP": {sym: "£", thousand: ",", decimal: "."},
 };
 
 function symToAlpha(sym) {
@@ -345,8 +343,8 @@ function symToAlpha(sym) {
 }
 
 function extractSymbol(str) {
-	var match = str.match(/(?:\$|€|£| pуб\.)/);
-	return match ? match[0] : "";
+    var match = str.match(/(?:\$|€|£| pуб\.)/);
+    return match ? match[0] : "";
 }
 
 function CC(rates) {
@@ -368,30 +366,26 @@ CC.prototype.convert = function (val, f, t) {
 CC.prototype.convertFromBase = function (val, t) { return this.convert(val, this.base, t); };
 CC.prototype.convertToBase = function (val, f) { return this.convert(val, f, this.base); };
 CC.prototype.parse = function (str) {
-	var sym = extractSymbol(str),
+    var sym = extractSymbol(str),
         alpha = symToAlpha(sym),
         format = ccFormats[alpha] || {},
         val = parseFloat(str.replace(new RegExp(format.thousand, "g"), '').replace(format.decimal, '.').replace(/[^\d|\.]+/g, '').trim());
 
-	return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
+    return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
 };
 
 function update(then) {
-    GM_xmlhttpRequest({
-        method: "GET",
-        url: "http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP",
-        onload: function (resp) {
-            var json;
+    Script.GET("http://api.fixer.io/latest?base=USD&symbols=EUR,RUB,GBP", function (resp) {
+        var json;
 
-            try {
-                json = JSON.parse(resp.responseText);
-            } catch (ex) {
-                return;
-            }
-
-            ccCache.set("rates", json).save();
-            then(inst = new CC(json));
+        try {
+            json = JSON.parse(resp);
+        } catch (ex) {
+            return;
         }
+
+        ccCache.set("rates", json).save();
+        then(inst = new CC(json));
     });
 }
 
@@ -407,7 +401,7 @@ exports.init = function (then) {
     }
 };
 
-},{"../cache":3}],5:[function(require,module,exports){
+},{"../cache":3,"../script":26}],5:[function(require,module,exports){
 var Prefs = require('../preferences'),
     Page = require('../page'),
     Pricing = require('../pricing'),
@@ -647,7 +641,7 @@ function autofillLowest(clones, auto) {
     if (lowest) {
         metal.val(lowest.metal);
         keys.val(lowest.keys);
-        unsafeWindow.updateFormState();
+        Script.exec("window.updateFormState();");
     }
 }
 
@@ -760,7 +754,7 @@ function addAutofill() {
             });
         }
 
-        unsafeWindow.updateFormState();
+        Script.exec("window.updateFormState();");
     });
 }
 
@@ -871,7 +865,7 @@ function bpDupeCheck() {
 
     (function next() {
         var item = items.shift(),
-            spinner, oid;
+            spinner, oid, dc;
 
         if (!item) return;
         oid = item.attr('data-original-id');
@@ -889,10 +883,11 @@ function bpDupeCheck() {
             next();
         }
 
-        if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
+        dc = Script.exec("window.dupeCache");
+        if (dc.hasOwnProperty(oid)) return applyIcon(dc[oid]);
         $.get("/item/" + oid, function (html) {
             var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            unsafeWindow.dupeCache[oid] = dupe;
+            Script.exec("window.dupeCache[\"" + oid + "\"] = " + dupe + ";");
             applyIcon(dupe);
         });
     }());
@@ -958,69 +953,65 @@ function addMorePopovers(more) {
 }
 
 function itemShiftSelect() {
-    /* global backpack, selectItem, unselectItem */
+    var backpack = Page.bp(),
+        $i = $('.item:not(.spacer)'),
+        $last, $select;
+
     Script.exec("$('.item:not(.spacer)').off('click');");
-    function _itemShiftSelect() {
-        var $i = $('.item:not(.spacer)'),
-            $last, $select;
+    $i.click(function (e) {
+        var $this = $(this),
+            $lidx;
 
-        $i.click(function (e) {
-            var $this = $(this),
-                $lidx;
-
-            if (!backpack.selectionMode) {
-                $last = null;
-                if ($this.siblings('.popover').length === 0) {
-                    // Touchscreen compatibility.
-                    // Makes it so a popover must be visible before selection mode can be activated.
-                    return;
-                }
-
-                backpack.selectionMode = true;
-                unselectItem($('.item'));
-                selectItem($this);
-                backpack.updateClearSelectionState();
-            } else {
-                if ($this.hasClass('unselected')) {
-                    if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
-                        e.preventDefault();
-                        document.getSelection().removeAllRanges();
-
-                        if ($lidx > $i.index($this)) {
-                            $select = $last.prevUntil($this);
-                        } else {
-                            $select = $last.nextUntil($this);
-                        }
-
-                        $last = $this;
-                        selectItem($select.add($this));
-                    } else {
-                        $last = $this;
-                        selectItem($this);
-                    }
-                } else {
-                    $last = null;
-                    unselectItem($this);
-
-                    if ($('.item:not(.unselected)').length === 0) {
-                        backpack.selectionMode = false;
-                        selectItem($('.item'));
-                        backpack.updateClearSelectionState();
-                    }
-                }
+        if (!backpack.selectionMode) {
+            $last = null;
+            if ($this.siblings('.popover').length === 0) {
+                // Touchscreen compatibility.
+                // Makes it so a popover must be visible before selection mode can be activated.
+                return;
             }
 
-            $('#clear-selection').click(function () {
-                if (!$(this).hasClass('disabled')) {
-                    backpack.clearSelection();
+            backpack.selectionMode = true;
+            Page.unselectItem($('.item'));
+            Page.selectItem($this);
+            backpack.updateClearSelectionState();
+        } else {
+            if ($this.hasClass('unselected')) {
+                if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
+                    e.preventDefault();
+                    document.getSelection().removeAllRanges();
+
+                    if ($lidx > $i.index($this)) {
+                        $select = $last.prevUntil($this);
+                    } else {
+                        $select = $last.nextUntil($this);
+                    }
+
+                    $last = $this;
+                    Page.selectItem($select.add($this));
+                } else {
+                    $last = $this;
+                    Page.selectItem($this);
                 }
-            });
+            } else {
+                $last = null;
+                Page.unselectItem($this);
 
-            backpack.updateValues();
+                if ($('.item:not(.unselected)').length === 0) {
+                    backpack.selectionMode = false;
+                    Page.selectItem($('.item'));
+                    backpack.updateClearSelectionState();
+                }
+            }
+        }
+
+        $('#clear-selection').click(function () {
+            if (!$(this).hasClass('disabled')) {
+                backpack.clearSelection();
+            }
         });
-    }
 
-    Script.exec('(' + _itemShiftSelect + '());');
+        backpack.updateValues();
+    });
 }
 
 function refValue() {
@@ -1092,16 +1083,14 @@ function global() {
     if (more.length) addMorePopovers(more);
 
     $('.navbar-game-select li a').each(function () {
-        var appid = +this.href.replace(/\D/g, "");
+        var appid = +this.href.replace(/\D/g, ""),
+            sub = "";
 
-        if (appid === 440) {
-            this.href = "http://backpack.tf" + location.pathname;
-        } else if (appid === 570) {
-            this.href = "http://dota2.backpack.tf" + location.pathname;
-        } else if (appid === 730) {
-            this.href = "http://csgo.backpack.tf" + location.pathname;
-        }
+        //if (appid === 440) // Nothing special
+        if (appid === 570) sub += "dota2.";
+        else if (appid === 730) sub += "csgo.";
 
+        this.href = "http://" + sub + "backpack.tf" + location.pathname;
         this.target = "_blank";
      });
 
@@ -1128,15 +1117,11 @@ function updateWallpaperCache(url, then) {
     var wallcache = new Cache("bes-cache-wallpaper", 0);
 
     if (wallcache.get("url").value !== url) {
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: url,
-            onload: function (resp) {
-                var wp = resp.responseText.replace(/\r/g, "").split("\n");
+        Script.GET(url, function (resp) {
+            var wp = resp.replace(/\r/g, "").split("\n");
 
-                wallcache.set("url", url).set("wallpapers", wp).save();
-                then(wp);
-            }
+            wallcache.set("url", url).set("wallpapers", wp).save();
+            then(wp);
         });
     } else {
         then(wallcache.get("wallpapers").value);
@@ -1216,6 +1201,7 @@ var Prefs = require('../preferences'),
     Page = require('../page'),
     Quicklist = require('./quicklist'),
     DataStore = require('../datastore'),
+    Key = require('../helpers/apikey'),
     Cache = require('../cache');
 
 function addTab() {
@@ -1487,7 +1473,9 @@ function clearCache() {
         DataStore.removeItem(name);
     });
 
-    DataStore.removeItem("backpackapikey");
+    Key.keys.forEach(function (k) {
+        DataStore.removeItem(k.field);
+    });
     location.reload();
 }
 
@@ -1581,7 +1569,7 @@ function load() {
 
 module.exports = load;
 
-},{"../cache":3,"../datastore":19,"../page":23,"../preferences":24,"./quicklist":11}],10:[function(require,module,exports){
+},{"../cache":3,"../datastore":19,"../helpers/apikey":20,"../page":23,"../preferences":24,"./quicklist":11}],10:[function(require,module,exports){
 var Page = require('../page'),
     Prefs = require('../preferences'),
     Pricing = require('../pricing'),
@@ -1627,7 +1615,8 @@ function applyTagsToItems(items) {
             s = {},
             o;
 
-        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440') return;
+        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440'
+              || (di === '5002' || di === '5001' || di === '5000')) return; // ignore metal
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf || ds.pScmAll.split(',')[0]),
             value = price.value,
@@ -1828,7 +1817,7 @@ function selectQuicklist() {
     html += "</div><br>";
     html += quicklistBtnHtml("", "", "", "", false);
 
-    unsafeWindow.modal("List Items", html, '<a class="btn btn-default btn-primary ql-action-button" data-action="listbatch">List Batch</a>');
+    Page.modal("List Items", html, '<a class="btn btn-default btn-primary ql-action-button" data-action="listbatch">List Batch</a>');
 
     $("#ql-cloned-batch").html(selection.clone()).find('.item').addClass('ql-cloned');
     $("#ql-button-listing .ql-select-msg").last().css('margin-bottom', '-8px');
@@ -1899,7 +1888,7 @@ function listItem(id, value, sample, then) {
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !unsafeWindow.confirm("Error occured, continue listing?")) return;
+        if (!ok && !Script.exec("confirm('Error occured, continue listing?');")) return;
         if (then) then();
     });
 }
@@ -1963,15 +1952,12 @@ function modifyQuicklists() {
     });
 }
 
-function selectItem(element) { element.removeClass('unselected'); }
-function unselectItem(element) { element.addClass('unselected'); }
-
 function addSelectPage() {
     var backpack = Page.bp();
 
     function selectItems(items) {
         backpack.selectionMode = true;
-        selectItem(items);
+        Page.selectItem(items);
 
         backpack.updateClearSelectionState();
         backpack.updateValues();
@@ -1985,17 +1971,17 @@ function addSelectPage() {
 
         if (backpack.selectionMode) {
             if (pageitems.length === pageitems.not('.unselected').length) { // all == selected
-                unselectItem(pageitems);
+                Page.unselectItem(pageitems);
 
                 if ($('.item:not(.unselected)').length === 0) {
                     _clearSelection();
                     return;
                 }
             } else {
-                selectItems(pageitems);
+                Page.selectItems(pageitems);
             }
         } else {
-            unselectItem($('.item'));
+            Page.unselectItem($('.item'));
             selectItems(pageitems);
         }
     });
@@ -2031,9 +2017,12 @@ function addHooks() {
         }
     });
 
-    Script.exec("var old_updateDisplay = window.backpack.updateDisplay;"+
-                addSelectPageButtons+
-                "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }");
+    Script.exec(
+        "$(function () {"+ // FF support
+            "var old_updateDisplay = window.backpack.updateDisplay;"+
+            addSelectPageButtons+
+            "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }"+
+        "});");
 }
 
 function load() {
@@ -2163,7 +2152,7 @@ var Script = require('../script'),
 var bans = [],
     bansShown = false,
     cachePruneTime = 60 * 30 * 1000, // 30 minutes (in ms)
-    banIssuers = ["srBans", "bzBans", "opBans", "stfBans", "bptfBans"],
+    issuers = ["srBans", "bzBans", "opBans", "stfBans", "bptfBans"],
     reptfSuccess = true,
     steamid, repCache;
 
@@ -2174,7 +2163,7 @@ function addMiniProfileButton() {
         profile.find('.stm-tf2outpost').parent().html('<i class=\"stm stm-tf2outpost\"></i> Outpost');
         profile.find('.stm-bazaar-tf').parent().html('<i class=\"stm stm-bazaar-tf\"></i> Bazaar');
         profile.find('.mini-profile-third-party').append(
-            ' <a class=\"btn btn-default btn-xs\" target=\"_blank\" href=\"http://rep.tf/'+ element.attr('data-id')+'\">'+
+            ' <a class=\"btn btn-default btn-xs\" target=\"_blank\" href=\"https://rep.tf/'+ element.attr('data-id')+'\">'+
             '<i class=\"fa fa-check-square\"></i> RepTF</a>'
         );
         return profile;
@@ -2187,7 +2176,7 @@ function addMiniProfileButton() {
 function showBansModal() {
     if (!bans.length) return;
 
-    var html = "<b style='color:red'>User is banned on</b> ⋅ <a href='http://rep.tf/" + steamid + "' target='_blank'>rep.tf</a><br><br><ul>";
+    var html = "<b style='color:red'>User is banned on</b> ⋅ <a href='https://rep.tf/" + steamid + "' target='_blank'>rep.tf</a><br><br><ul>";
     bans.forEach(function (ban) {
         html += "<li><b>" + ban.name + "</b> - " + ban.reason + "</li>";
     });
@@ -2197,19 +2186,18 @@ function showBansModal() {
 }
 
 function addProfileButtons() {
-    $('.btn > .stm-tf2outpost').parent().after(' <a class="btn btn-primary btn-xs" href="http://rep.tf/' + steamid + '" target="_blank"><i class="fa fa-check-square"></i> rep.tf</a>');
+    $('.btn > .stm-tf2outpost').parent().after(' <a class="btn btn-primary btn-xs" href="https://rep.tf/' + steamid + '" target="_blank"><i class="fa fa-check-square"></i> rep.tf</a>');
     $('small:contains(Community)').html('Community <a id="showrep" style="font-size: 14px; cursor: pointer;">+</a>');
 
-    $('#showrep').on('click', function () {
-        var $this = $(this),
-            open = $this.text() === '+';
+    $('#showrep').click(function () {
+        var open = this.textContent === '+';
 
         if (open && !bansShown) {
             showBansModal();
             bansShown = true;
         }
 
-        $this.text(open ? '-' : '+');
+        this.textContent = open ? '-' : '+';
         $('.rep-entry').toggle(open);
     });
 }
@@ -2247,7 +2235,7 @@ function checkBans() {
 function compactResponse(json) {
     var compact = {success: json.success};
 
-    banIssuers.forEach(function (issuer) {
+    issuers.forEach(function (issuer) {
         if (!json[issuer]) return;
         compact[issuer] = {banned: json[issuer].banned, message: json[issuer].message};
     });
@@ -2256,34 +2244,29 @@ function compactResponse(json) {
 }
 
 function updateCache() {
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: "https://rep.tf/api/bans?str=" + steamid,
-        headers: {Referer: 'https://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://rep.tf'},
-        onload: function (resp) {
-            var json;
+    Script.POST("https://rep.tf/api/bans?str=" + steamid, function (resp) {
+        var json;
 
-            try {
-                json = compactResponse(JSON.parse(resp.responseText));
-            } catch (ex) {
-                json = {success: false};
-            }
-
-            reptfSuccess = json.success;
-            repCache.set(steamid, json);
-            if (json.success) repCache.save();
-
-            showBans(json);
+        try {
+            json = compactResponse(JSON.parse(resp));
+        } catch (ex) {
+            json = {success: false};
         }
-    });
+
+        reptfSuccess = json.success;
+        repCache.set(steamid, json);
+        if (json.success) repCache.save();
+
+        showBans(json);
+    },
+    {headers: {Referer: 'https://rep.tf/' + steamid, 'X-Requested-With': 'XMLHttpRequest', Origin: 'https://rep.tf'}}
+   );
 }
 
 function addRepTooltips() {
     $('.rep-tooltip').tooltip({
         html: true,
-        title: function () {
-            return $(this).data('content');
-        }
+        title: function () { return this.dataset.content; }
     });
 }
 
@@ -2317,7 +2300,7 @@ function showBans(json) {
     ban("Backpack.tf", json.bptfBans);
 
     addRepTooltips();
-    $('#showrep').css('color', reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E');
+    Page.$id('showrep').style.color = reptfSuccess ? (bans.length ? '#D9534F' : '#5CB85C') : '#F0AD4E';
 }
 
 function load() {
@@ -2360,23 +2343,23 @@ var appQualities = {
             "Collector's": ["#830000", "#560000"]
         },
         qids: {
-			"normal": 0,
-			"genuine": 1,
-			"rarity2": 2,
-			"vintage": 3,
-			"rarity3": 4,
-			"unusual": 5,
-			"unique": 6,
-			"community": 7,
-			"valve": 8,
-			"self-made": 9,
-			"customized": 10,
-			"strange": 11,
-			"completed": 12,
-			"haunted": 13,
-			"collector's": 14,
-			"decorated weapon": 15
-		},
+            "normal": 0,
+            "genuine": 1,
+            "rarity2": 2,
+            "vintage": 3,
+            "rarity3": 4,
+            "unusual": 5,
+            "unique": 6,
+            "community": 7,
+            "valve": 8,
+            "self-made": 9,
+            "customized": 10,
+            "strange": 11,
+            "completed": 12,
+            "haunted": 13,
+            "collector's": 14,
+            "decorated weapon": 15
+        },
         defquality: "Unique"
     },
     570: {
@@ -2450,7 +2433,7 @@ var Search = {
             };
         }
 
-        this._req = GM_xmlhttpRequest(attrs);
+        this._req = Script.xhr(attrs);
     },
     cache: function (query, content) {
         var q = this._reqcache;
@@ -2499,7 +2482,7 @@ function checkCustom(query) {
 }
 
 function addEventListeners() {
-    var inst = unsafeWindow.$('#navbar-search').data('instance');
+    var inst = Script.exec("$('#navbar-search').data('instance')");
 
     Script.exec('$("#navbar-search").off("keyup");');
 
@@ -2998,6 +2981,8 @@ function Key(field, loadconf, done) {
     this.loadconf = loadconf;
     this.done = done;
     this.key = '';
+
+    Key.keys.push(this);
 }
 
 Key.prototype.register = function () {throw new Error('abstract method register not reimplemented');};
@@ -3044,6 +3029,7 @@ Key.prototype.load = function () {
     }
 };
 
+Key.keys = [];
 module.exports = Key;
 
 },{"../datastore":19,"../script":26}],21:[function(require,module,exports){
@@ -3122,6 +3108,8 @@ exports.applyActions = function () {
 },{"./page":23}],23:[function(require,module,exports){
 var Script = require('./script');
 
+// Suite stuff
+
 var nonNumerical = /\D/g;
 
 var state = {
@@ -3160,7 +3148,7 @@ exports.init = function () {
             state.ownprofile = state.ownid === state.steamid;
         }
 
-        state.token = unsafeWindow.userID || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
+        state.token = Script.exec("window.userID") || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
         state.ownbackpack = state.ownprofile && state.backpack;
     }
 
@@ -3187,13 +3175,21 @@ getter('isIndexPage', 'indexpage');
 getter('ready', 'loaded');
 getter('users', 'handles');
 
-exports.modal = function () {
-    unsafeWindow.modal.apply(unsafeWindow, arguments);
+exports.escapeHtml = function (message) {
+    return $('<span>').text(message).text().replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 };
 
-exports.hideModal = function () {
-    Script.exec('$("#active-modal").modal("hide");');
+exports.addStyle = function (css) {
+    var style = document.createElement('style');
+    style.textContent = css;
+    (document.head || document.body || document.documentElement).appendChild(style);
 };
+
+exports.$id = function (id) { return document.getElementById(id); };
+
+exports.SUITE_VERSION = GM_info.script.version;
+
+// Page stuff/userscript fixes
 
 exports.addTooltips = function (elem, container) {
     if (!elem) elem = $("[data-suite-tooltip]");
@@ -3206,22 +3202,20 @@ exports.addTooltips = function (elem, container) {
 exports.addPopovers = function (item, container, handlers) {
     item.each(function () {
         var $this = $(this),
-            self = this;
-        var id = (Math.random() + "").substr(2) + (Date.now() + "");
+            self = this,
+            id = Script.uniq();
 
-        $this.mouseenter(function() {
+        $this.mouseenter(function () {
             if ($this.parent().hasClass('item-list-links')) {
                 return;
             }
 
             function next(h) {
                 var content, placement,
-                    handles = handlers;
+                    fn = h ? h : handlers;
 
-                if (h) handles = h;
-
-                content = typeof handles.content === "function" ? handles.content.call(this, id) : handles.content;
-                placement = typeof handles.placement === "function" ? handles.placement.call(this, id) : handles.placement;
+                content = typeof fn.content === "function" ? fn.content.call(this, id) : fn.content;
+                placement = typeof fn.placement === "function" ? fn.placement.call(this, id) : fn.placement;
 
                 // Firefox support
                 $this.attr('data-bes-id', id);
@@ -3235,20 +3229,31 @@ exports.addPopovers = function (item, container, handlers) {
                 setTimeout(function () {
                     if ($this.filter(':hover').length) {
                         // Firefox support
-                        Script.exec('$(".popover").remove(); $("[data-bes-id=\\"' + id + '\\"]").popover("show"); $(".popover").css("padding", 0);');
-                        if (handles.show) handles.show.call(self, id);
+                        Script.exec(
+                            '(function () {'+
+                                'var popover = $("[data-bes-id=\\"' + id + '\\"]");'+
+                                '$(".popover").remove(); popover.popover("show"); popover.style.padding = 0;'+
+                                (fn.show ? '(' + fn.show + ').call(popover, "' + id + '");' : '')+
+                            '}());'
+                        );
                     }
-                }, handles.delay ? 300 : 0);
+                }, fn.delay ? 300 : 0);
             }
 
             if (handlers.next) handlers.next.call(this, next.bind(this));
             else next.call(this);
         }).mouseleave(function () {
             setTimeout(function () {
+                var id = self.getAttribute('data-bes-id');
                 if (!$this.filter(':hover').length && !$('.popover:hover').length) {
                     // Firefox support
-                    Script.exec('$("[data-bes-id=\\"' + $this.attr('data-bes-id') + '\\"]").popover("hide");');
-                    if (handlers.hide) handlers.hide.call(self, id);
+                    Script.exec(
+                        '(function () {'+
+                            'var popover = $("[data-bes-id=\\"' + id + '\\"]");'+
+                            'popover.popover("hide");'+
+                            (handlers.hide ? '(' + handlers.hide + ').call(popover, "' + id + '");' : '')+
+                        '}());'
+                    );
                 }
             }, 100);
         }).on('shown.bs.popover', function () {
@@ -3276,34 +3281,61 @@ exports.addItemPopovers = function (item, container) {
         content: 'window.createDetails(elem)',
         placement: 'window.get_popover_placement',
         show: function () {
-            var $this = $(this);
+            var ds = this.dataset,
+                di = ds.defindex,
+                dq = ds.quality,
+                dpi = ds.priceindex,
+                dc = +!ds.craftable,
+                da = ds.app;
+
             $('#search-bazaar').click(function () {
-                unsafeWindow.searchBazaar($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
+                window.searchBazaar(di, dq, dpi, dc, da);
             });
 
             $('#search-outpost').click(function () {
-                unsafeWindow.searchOutpost($this.data('defindex'), $this.data('quality'), $this.data('priceindex'), $this.data('craftable') == 1 ? 0 : 1, $this.data('app'));
+                window.searchOutpost(di, dq, dpi, dc, da);
             });
 
             $('#search-lounge').click(function() {
-                unsafeWindow.searchLounge($this.data('defindex'), $this.data('quality'));
+                window.searchLounge(di, dq);
             });
         }
     });
 };
 
-exports.escapeHtml = function (message) {
-    return $('<span>').text(message).text().replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+exports.modal = function (titleContent, bodyContent, footerContent){
+    var active_modal = $('<div class="modal fade" id="active-modal"/>'),
+        dialog = $('<div class="modal-dialog"/>'),
+        content = $('<div class="modal-content"/>'),
+        header = $('<div class="modal-header"/>'),
+        body = $('<div class="modal-body"/>'),
+        footer = $('<div class="modal-footer" />'),
+        headerClose = $('<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>'),
+        title = $('<h4 class="modal-title"/>');
+
+    $('#active-modal').remove();
+    $('.modal-backdrop').remove();
+
+    footerContent = footerContent === undefined ? $('<a class="btn btn-default" data-dismiss="modal">Dismiss</a>') : footerContent;
+
+    $('#page-content').append(active_modal.append(
+        dialog.append(
+            content.append(
+                header.append(headerClose).append(title.append(titleContent))
+            ).append(body.append(bodyContent)).append(footer.append(footerContent))
+        )
+    ));
+
+    Script.exec('$("#active-modal").modal();');
 };
 
-exports.addStyle = function (css) {
-    var style = document.createElement('style');
-    style.textContent = css;
-    (document.head || document.body || document.documentElement || document).appendChild(style);
+exports.hideModal = function () {
+    $("#active-modal").remove();
 };
 
-exports.bp = function () { return unsafeWindow.backpack; };
-exports.SUITE_VERSION = GM_info.script.version;
+exports.bp = function () { return Script.exec("window.backpack"); };
+exports.selectItem = function (e) { e.removeClass('unselected'); };
+exports.unselectItem = function (e) { e.addClass('unselected'); };
 
 },{"./script":26}],24:[function(require,module,exports){
 var DataStore = require('./datastore');
@@ -3479,14 +3511,10 @@ exports.fromBackpack = function (ec, price) {
 };
 
 },{"./api":2,"./preferences":24}],26:[function(require,module,exports){
-exports.exec = function (code) {
-    var scr = document.createElement('script'),
-        elem = (document.body || document.head || document.documentElement);
-    scr.textContent = code;
+var counter = 0;
 
-    elem.appendChild(scr);
-    elem.removeChild(scr);
-};
+/* jshint -W061 */
+exports.exec = function (code) { return window.eval(code); };
 
 exports.xhr = GM_xmlhttpRequest;
 exports.VERB = function (url, load, args, method) {
@@ -3500,5 +3528,7 @@ exports.VERB = function (url, load, args, method) {
 
 exports.GET = function (url, load, args) { exports.VERB(url, load, args || {}, "GET"); };
 exports.POST = function (url, load, args) { exports.VERB(url, load, args || {}, "POST"); };
+
+exports.uniq = function () { return counter++; };
 
 },{}]},{},[1]);

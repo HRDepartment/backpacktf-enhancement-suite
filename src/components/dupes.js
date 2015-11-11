@@ -72,7 +72,7 @@ function bpDupeCheck() {
 
     (function next() {
         var item = items.shift(),
-            spinner, oid;
+            spinner, oid, dc;
 
         if (!item) return;
         oid = item.attr('data-original-id');
@@ -90,10 +90,11 @@ function bpDupeCheck() {
             next();
         }
 
-        if (unsafeWindow.dupeCache.hasOwnProperty(oid)) return applyIcon(unsafeWindow.dupeCache[oid]);
+        dc = Script.exec("window.dupeCache");
+        if (dc.hasOwnProperty(oid)) return applyIcon(dc[oid]);
         $.get("/item/" + oid, function (html) {
             var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            unsafeWindow.dupeCache[oid] = dupe;
+            Script.exec("window.dupeCache[\"" + oid + "\"] = " + dupe + ";");
             applyIcon(dupe);
         });
     }());

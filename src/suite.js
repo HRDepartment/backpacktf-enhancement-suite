@@ -15,7 +15,7 @@ var Prefs = require('./preferences'),
     Page = require('./page');
 
 // Ignore non-html pages
-if (typeof unsafeWindow.$ !== 'function' || typeof unsafeWindow.$() === 'undefined') return;
+if (!document.getElementById("helpers")) return;
 
 Page.init();
 require('./api').init();

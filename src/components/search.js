@@ -22,23 +22,23 @@ var appQualities = {
             "Collector's": ["#830000", "#560000"]
         },
         qids: {
-			"normal": 0,
-			"genuine": 1,
-			"rarity2": 2,
-			"vintage": 3,
-			"rarity3": 4,
-			"unusual": 5,
-			"unique": 6,
-			"community": 7,
-			"valve": 8,
-			"self-made": 9,
-			"customized": 10,
-			"strange": 11,
-			"completed": 12,
-			"haunted": 13,
-			"collector's": 14,
-			"decorated weapon": 15
-		},
+            "normal": 0,
+            "genuine": 1,
+            "rarity2": 2,
+            "vintage": 3,
+            "rarity3": 4,
+            "unusual": 5,
+            "unique": 6,
+            "community": 7,
+            "valve": 8,
+            "self-made": 9,
+            "customized": 10,
+            "strange": 11,
+            "completed": 12,
+            "haunted": 13,
+            "collector's": 14,
+            "decorated weapon": 15
+        },
         defquality: "Unique"
     },
     570: {
@@ -112,7 +112,7 @@ var Search = {
             };
         }
 
-        this._req = GM_xmlhttpRequest(attrs);
+        this._req = Script.xhr(attrs);
     },
     cache: function (query, content) {
         var q = this._reqcache;
@@ -161,7 +161,7 @@ function checkCustom(query) {
 }
 
 function addEventListeners() {
-    var inst = unsafeWindow.$('#navbar-search').data('instance');
+    var inst = Script.exec("$('#navbar-search').data('instance')");
 
     Script.exec('$("#navbar-search").off("keyup");');
 

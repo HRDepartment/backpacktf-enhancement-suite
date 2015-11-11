@@ -87,10 +87,7 @@ exports.init = function () {
 
     key = new Key("backpackapikey", {url: 'https://backpack.tf/api/register'}, queue.next.bind(queue));
     key.extract = function (text) {
-        var elem = (text.match(/<pre>[a-f\d]{24}<\/pre>/)[0]) || "",
-            apikey = elem.substr(5, elem.length - 11);
-
-        return apikey;
+        return (text.match(/<pre>([a-f\d]{24})<\/pre>/) || [])[1];
     }.bind(key);
     key.register = function () {
         var token = Page.csrfToken(),

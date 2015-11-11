@@ -6,6 +6,8 @@ function Key(field, loadconf, done) {
     this.loadconf = loadconf;
     this.done = done;
     this.key = '';
+
+    Key.keys.push(this);
 }
 
 Key.prototype.register = function () {throw new Error('abstract method register not reimplemented');};
@@ -52,4 +54,5 @@ Key.prototype.load = function () {
     }
 };
 
+Key.keys = [];
 module.exports = Key;

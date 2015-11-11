@@ -1,11 +1,7 @@
-exports.exec = function (code) {
-    var scr = document.createElement('script'),
-        elem = (document.body || document.head || document.documentElement);
-    scr.textContent = code;
+var counter = 0;
 
-    elem.appendChild(scr);
-    elem.removeChild(scr);
-};
+/* jshint -W061 */
+exports.exec = function (code) { return window.eval(code); };
 
 exports.xhr = GM_xmlhttpRequest;
 exports.VERB = function (url, load, args, method) {
@@ -19,3 +15,5 @@ exports.VERB = function (url, load, args, method) {
 
 exports.GET = function (url, load, args) { exports.VERB(url, load, args || {}, "GET"); };
 exports.POST = function (url, load, args) { exports.VERB(url, load, args || {}, "POST"); };
+
+exports.uniq = function () { return counter++; };
