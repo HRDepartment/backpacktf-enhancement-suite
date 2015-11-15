@@ -47,18 +47,13 @@ function addDupeCheck() {
 function bpDupeCheck() {
     var items = [];
 
-    if (!Page.bp().selectionMode) {
+    if (Page.bp().selectionMode) {
         return alert("Select the items you want to dupe-check first.");
     }
 
     $('.item:not(.spacer,.unselected):visible').each(function () {
         var $this = $(this),
-            stack = $this.find('.icon-stack');
-
-        if (!stack.length) {
-            $this.append('<div class="icon-stack"></div>');
-            stack = $this.find('.icon-stack');
-        }
+            stack = Page.addItemIcon($this);
 
         if (stack.find('.dupe-check-result').length) return;
 
@@ -90,11 +85,11 @@ function bpDupeCheck() {
             next();
         }
 
-        dc = Script.exec("window.dupeCache");
+        dc = Script.window.dupeCache;
         if (dc.hasOwnProperty(oid)) return applyIcon(dc[oid]);
         $.get("/item/" + oid, function (html) {
             var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            Script.exec("window.dupeCache[\"" + oid + "\"] = " + dupe + ";");
+            dc[oid] = dupe;
             applyIcon(dupe);
         });
     }());

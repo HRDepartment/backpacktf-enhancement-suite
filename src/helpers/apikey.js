@@ -35,7 +35,7 @@ Key.prototype.set = function (key) {
 };
 
 Key.prototype.remove = function () {
-    this.key = null;
+    this.key = '';
     DataStore.removeItem(this.field);
 };
 

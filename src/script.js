@@ -1,7 +1,11 @@
 var counter = 0;
 
 /* jshint -W061 */
-exports.exec = function (code) { return window.eval(code); };
+exports.exec = function (code) {
+    return window.eval(code);
+};
+
+exports.window = unsafeWindow;
 
 exports.xhr = GM_xmlhttpRequest;
 exports.VERB = function (url, load, args, method) {

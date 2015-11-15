@@ -40,7 +40,7 @@ exports.init = function () {
             state.ownprofile = state.ownid === state.steamid;
         }
 
-        state.token = Script.exec("window.userID") || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
+        state.token = Script.window.userID || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
         state.ownbackpack = state.ownprofile && state.backpack;
     }
 
@@ -92,65 +92,42 @@ exports.addTooltips = function (elem, container) {
 // fn is bound to this, remember to wrap strings in ""
 // if content/placement is str, variable elem refers to the element
 exports.addPopovers = function (item, container, handlers) {
-    item.each(function () {
-        var $this = $(this),
-            self = this,
-            id = Script.uniq();
+    item.mouseenter(function () {
+        var $this = $(this);
+        if ($this.parent().hasClass('item-list-links')) {
+            return;
+        }
 
-        $this.mouseenter(function () {
-            if ($this.parent().hasClass('item-list-links')) {
-                return;
-            }
+        function next(fn) {
+            var content, placement;
+            fn = fn || {};
 
-            function next(h) {
-                var content, placement,
-                    fn = h ? h : handlers;
+            content = typeof fn.content === "function" ? fn.content.call($this) : fn.content;
+            placement = typeof fn.placement === "function" ? fn.placement.call($this) : fn.placement;
 
-                content = typeof fn.content === "function" ? fn.content.call(this, id) : fn.content;
-                placement = typeof fn.placement === "function" ? fn.placement.call(this, id) : fn.placement;
-
-                // Firefox support
-                $this.attr('data-bes-id', id);
-                Script.exec(
-                    '(function () {'+
-                        'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
-                        'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
-                    '}());'
-                );
-
-                setTimeout(function () {
-                    if ($this.filter(':hover').length) {
-                        // Firefox support
-                        Script.exec(
-                            '(function () {'+
-                                'var popover = $("[data-bes-id=\\"' + id + '\\"]");'+
-                                '$(".popover").remove(); popover.popover("show"); popover.style.padding = 0;'+
-                                (fn.show ? '(' + fn.show + ').call(popover, "' + id + '");' : '')+
-                            '}());'
-                        );
-                    }
-                }, fn.delay ? 300 : 0);
-            }
-
-            if (handlers.next) handlers.next.call(this, next.bind(this));
-            else next.call(this);
-        }).mouseleave(function () {
+            $this.popover({animation: false, html: true, trigger: "manual", placement: placement, content: content});
             setTimeout(function () {
-                var id = self.getAttribute('data-bes-id');
-                if (!$this.filter(':hover').length && !$('.popover:hover').length) {
-                    // Firefox support
-                    Script.exec(
-                        '(function () {'+
-                            'var popover = $("[data-bes-id=\\"' + id + '\\"]");'+
-                            'popover.popover("hide");'+
-                            (handlers.hide ? '(' + handlers.hide + ').call(popover, "' + id + '");' : '')+
-                        '}());'
-                    );
+                if ($this.filter(':hover').length) {
+                    $(".popover").remove();
+                    $this.popover("show");
+                    $this[0].style.padding = 0;
+                    if (fn.show) fn.show.call($this);
                 }
-            }, 100);
-        }).on('shown.bs.popover', function () {
-            Script.exec("$('.popover-timeago').timeago();");
-        });
+            }, fn.delay || 0);
+        }
+
+        if (handlers.next) handlers.next.call($this, next);
+        else next(handlers);
+    }).mouseleave(function () {
+        var $this = $(this);
+        setTimeout(function () {
+            if (!$this.filter(':hover').length && !$('.popover:hover').length) {
+                $this.popover("hide");
+                if (handlers.hide) handlers.hide.call($this);
+            }
+        }, 100);
+    }).on('shown.bs.popover', function () {
+        Script.exec("$('.popover-timeago').timeago();");
     });
 
     if (container) {
@@ -170,10 +147,10 @@ exports.addPopovers = function (item, container, handlers) {
 
 exports.addItemPopovers = function (item, container) {
     exports.addPopovers(item, container, {
-        content: 'window.createDetails(elem)',
-        placement: 'window.get_popover_placement',
+        content: function () { return Script.window.createDetails(this); },
+        placement: function () { return Script.window.get_popover_placement; },
         show: function () {
-            var ds = this.dataset,
+            var ds = this[0].dataset,
                 di = ds.defindex,
                 dq = ds.quality,
                 dpi = ds.priceindex,
@@ -195,36 +172,25 @@ exports.addItemPopovers = function (item, container) {
     });
 };
 
-exports.modal = function (titleContent, bodyContent, footerContent){
-    var active_modal = $('<div class="modal fade" id="active-modal"/>'),
-        dialog = $('<div class="modal-dialog"/>'),
-        content = $('<div class="modal-content"/>'),
-        header = $('<div class="modal-header"/>'),
-        body = $('<div class="modal-body"/>'),
-        footer = $('<div class="modal-footer" />'),
-        headerClose = $('<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>'),
-        title = $('<h4 class="modal-title"/>');
+// don't pass html to return just an icon stack
+exports.addItemIcon = function (el, html) {
+    var elem = $(el),
+        stack = elem.find('.icon-stack');
 
-    $('#active-modal').remove();
-    $('.modal-backdrop').remove();
+    if (!stack.length) {
+        elem.append('<div class="icon-stack"></div>');
+        stack = elem.find('.icon-stack');
+    }
 
-    footerContent = footerContent === undefined ? $('<a class="btn btn-default" data-dismiss="modal">Dismiss</a>') : footerContent;
-
-    $('#page-content').append(active_modal.append(
-        dialog.append(
-            content.append(
-                header.append(headerClose).append(title.append(titleContent))
-            ).append(body.append(bodyContent)).append(footer.append(footerContent))
-        )
-    ));
-
-    Script.exec('$("#active-modal").modal();');
+    if (!html) return stack;
+    return stack.append(html);
 };
 
+exports.modal = function () { return Script.window.modal.apply(Script.window, arguments); };
 exports.hideModal = function () {
-    $("#active-modal").remove();
+    $("#active-modal, .modal-backdrop").remove();
 };
 
-exports.bp = function () { return Script.exec("window.backpack"); };
+exports.bp = function () { return Script.window.backpack; };
 exports.selectItem = function (e) { e.removeClass('unselected'); };
 exports.unselectItem = function (e) { e.addClass('unselected'); };

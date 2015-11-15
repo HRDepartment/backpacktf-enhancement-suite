@@ -43,8 +43,8 @@ function applyTagsToItems(items) {
             s = {},
             o;
 
-        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440'
-              || (di === '5002' || di === '5001' || di === '5000')) return; // ignore metal
+        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440' ||
+             (di === '5002' || di === '5001' || di === '5000')) return; // ignore metal
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf || ds.pScmAll.split(',')[0]),
             value = price.value,
@@ -126,6 +126,6 @@ function load() {
 
 module.exports = load;
 
-module.exports.setupInst = setupInst;
-module.exports.applyTagsToItems = applyTagsToItems;
-module.exports.enabled = enabled;
+exports.setupInst = setupInst;
+exports.applyTagsToItems = applyTagsToItems;
+exports.enabled = enabled;

@@ -15,10 +15,7 @@ function addMorePopovers(more) {
                 url = vote.find('.vote-stats li:eq(1) a').attr('href');
 
             function showPopover(html) {
-                fn({
-                    content: '"' + html.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, "\\n") + '"',
-                    placement: '"right"'
-                });
+                fn({content: html, placement: "right"});
             }
 
             if (moreCache[url]) return showPopover(moreCache[url]);
@@ -34,69 +31,7 @@ function addMorePopovers(more) {
                 moreLoading[url] = false;
             });
         },
-        delay: false
-    });
-}
-
-function itemShiftSelect() {
-    var backpack = Page.bp(),
-        $i = $('.item:not(.spacer)'),
-        $last, $select;
-
-    Script.exec("$('.item:not(.spacer)').off('click');");
-    $i.click(function (e) {
-        var $this = $(this),
-            $lidx;
-
-        if (!backpack.selectionMode) {
-            $last = null;
-            if ($this.siblings('.popover').length === 0) {
-                // Touchscreen compatibility.
-                // Makes it so a popover must be visible before selection mode can be activated.
-                return;
-            }
-
-            backpack.selectionMode = true;
-            Page.unselectItem($('.item'));
-            Page.selectItem($this);
-            backpack.updateClearSelectionState();
-        } else {
-            if ($this.hasClass('unselected')) {
-                if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
-                    e.preventDefault();
-                    document.getSelection().removeAllRanges();
-
-                    if ($lidx > $i.index($this)) {
-                        $select = $last.prevUntil($this);
-                    } else {
-                        $select = $last.nextUntil($this);
-                    }
-
-                    $last = $this;
-                    Page.selectItem($select.add($this));
-                } else {
-                    $last = $this;
-                    Page.selectItem($this);
-                }
-            } else {
-                $last = null;
-                Page.unselectItem($this);
-
-                if ($('.item:not(.unselected)').length === 0) {
-                    backpack.selectionMode = false;
-                    Page.selectItem($('.item'));
-                    backpack.updateClearSelectionState();
-                }
-            }
-        }
-
-        $('#clear-selection').click(function () {
-            if (!$(this).hasClass('disabled')) {
-                backpack.clearSelection();
-            }
-        });
-
-        backpack.updateValues();
+        delay: 0
     });
 }
 
@@ -192,7 +127,6 @@ function global() {
 
     if (Page.isBackpack()) {
         refValue();
-        itemShiftSelect();
     }
 
     addUnusualDetailsButtons();

@@ -6,8 +6,8 @@ var ccCache, inst;
 
 var ccFormats = {
     "USD": {sym: "$", thousand: ",", decimal: "."},
-    "EUR": {sym: "€", thousand: " ", decimal: ","},
-    "RUB": {sym: " pуб.", thousand: "", decimal: ","},
+    "EUR": {sym: "€", thousand: " ", decimal: ",", trail: true},
+    "RUB": {sym: " pуб.", thousand: "", decimal: ",", trail: true},
     "GBP": {sym: "£", thousand: ",", decimal: "."},
 };
 
@@ -20,8 +20,7 @@ function symToAlpha(sym) {
 }
 
 function extractSymbol(str) {
-    var match = str.match(/(?:\$|€|£| pуб\.)/);
-    return match ? match[0] : "";
+    return (str.match(/(?:\$|€|£| pуб\.)/) || [])[0] || "";
 }
 
 function CC(rates) {
@@ -36,8 +35,8 @@ CC.prototype.convert = function (val, f, t) {
         !this.rates.hasOwnProperty(t)) return -1;
     if (f === t) return val;
 
-    if (this.base !== f) val *= this.rates[f];
-    return val * this.rates[t];
+    if (f !== this.base) return val * 1/this.rates[f];
+    else return val * this.rates[t];
 };
 
 CC.prototype.convertFromBase = function (val, t) { return this.convert(val, this.base, t); };
@@ -48,7 +47,7 @@ CC.prototype.parse = function (str) {
         format = ccFormats[alpha] || {},
         val = parseFloat(str.replace(new RegExp(format.thousand, "g"), '').replace(format.decimal, '.').replace(/[^\d|\.]+/g, '').trim());
 
-    return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
+    return {val: val, sym: sym, alpha: alpha, trailing: format.trail || false, matched: sym !== ''};
 };
 
 function update(then) {

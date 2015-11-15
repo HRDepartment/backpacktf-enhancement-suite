@@ -21,8 +21,6 @@ Page.init();
 require('./api').init();
 
 Prefs.defaults({
-    reptf: {enabled: true},
-    quicklist: {enabled: true},
     lotto: {show: true},
     notifications: {updatecount: 'click'},
     pricetags: {
@@ -42,6 +40,7 @@ Prefs.defaults({
         signature: '',
         'signature-buy': '',
         autoclose: true,
+        autopeek: false,
         autofill: 'default'
     },
     homebg: {
@@ -65,7 +64,7 @@ function exec(mod) {
 }
 
 exec(require('./components/improvements'));
-if (Prefs.enabled('reptf')) exec(require('./components/reptf'));
+exec(require('./components/reptf'));
 exec(require('./components/quicklist')); // prefs checked inside main
 exec(require('./components/pricetags'));
 if (Prefs.enabled('changes')) exec(require('./components/changes'));

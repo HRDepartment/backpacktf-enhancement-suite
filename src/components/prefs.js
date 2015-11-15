@@ -108,25 +108,17 @@ function addTabContent() {
             userInputp('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
             help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
             buttonsyn('Auto-close when listed successfully', 'classifieds', 'autoclose'),
-            help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
+            help("Automatically close the page when you successfully post a Classifieds listing manually."),
             buttonsChoice('Auto-fill price', 'classifieds', 'autofill', [
                 {value: 'backpack', label: 'backpack.tf'},
                 {value: 'lowestauto', label: "Lowest automatic listing"},
                 {value: 'lowest', label: "Lowest listing"},
                 {value: 'default', label: 'Disabled'},
             ]),
-            help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used manually. For those options, if there are no (automatic) listings, nothing will be auto-filled."),
-        ]),
+            help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used (recommended to enable autopeek below). For those options, if there are no (automatic) listings, nothing will be done."),
+            buttonsyn('Auto-peek', 'classifieds', 'autopeek'),
 
-        section('Classifieds quicklisting', [
-            buttonsyn('Enabled', 'quicklist', 'enabled'),
-            help("Adds Select Page buttons to your profile. Once you have selected some items, click on the 'Quicklist selection' button. You can select a pre-defined price/message (click the button below) or enter them on the spot. The items will be listed sequentially with the price and message you provided. Only Team Fortress 2 is supported."),
-            button('Modify Presets', 'modify-quicklists')
-        ]),
-
-        section('rep.tf integration', [
-            buttonsyn('Enabled', 'reptf', 'enabled'),
-            help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
+            button('Modify Quicklisting Presets', 'modify-quicklists')
         ]),
 
         section('Pricing', [

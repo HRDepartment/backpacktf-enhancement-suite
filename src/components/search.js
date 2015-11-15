@@ -87,7 +87,8 @@ var appids = {};
 appids.tf = appids.tf2 = 440;
 appids.cs = appids.csgo = appids.go = 730;
 appids.dota = appids.dota2 = appids.dt = appids.dt2 = 570;
-appids.scm = appids.market = appids.steam = 1;
+appids.steam = appids.stm = 753;
+appids.scm = appids.market = 1;
 
 var Search = {
     _req: null,
@@ -99,6 +100,7 @@ var Search = {
         qualities: appQualities,
         names: appnames
     },
+    hints: [],
 
     request: function (attrs, then) {
         if (this._req) this._req.abort();
@@ -136,6 +138,9 @@ var Search = {
             Search.scopes[name] = o;
         });
     },
+    hint: function (title, hint) {
+        this.hints.push('<p class="hint-title">' + title + '</p><p class="hint">' + hint + '</p>');
+    },
     include: function (o) {
         o.register(Search);
     },
@@ -161,7 +166,8 @@ function checkCustom(query) {
 }
 
 function addEventListeners() {
-    var inst = Script.exec("$('#navbar-search').data('instance')");
+    var inst = Script.window.$('#navbar-search').data('instance'),
+        old_showHints = inst.showHints;
 
     Script.exec('$("#navbar-search").off("keyup");');
 
@@ -176,12 +182,19 @@ function addEventListeners() {
             inst.lastQuery = query;
         }
     });
+
+    inst.showHints = function () {
+        old_showHints.call(inst);
+        inst.$dropdown.find('li:nth(1)').append(Search.hints.join(""));
+    };
+
+    inst.showHints();
 }
 
 function loadScopes() {
     Search.include(require('./searchscopes/scm'));
-    Search.include(require('./searchscopes/classifieds'));
     Search.include(require('./searchscopes/unusuals'));
+    Search.include(require('./searchscopes/classifieds'));
 }
 
 function load() {

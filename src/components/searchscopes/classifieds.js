@@ -86,5 +86,8 @@ function render(content) {
 }
 
 exports.register = function (s) {
+    Search = s;
     s.register(["classifieds", "classified", "cl", "c"], {load: request, render: render});
+    s.hint("Classifieds sell orders",
+           "Type c: followed by the name of the item. For fine-grained searches, use the item name,quality,tradable,craftable format like Warmer,unique,+,-");
 };

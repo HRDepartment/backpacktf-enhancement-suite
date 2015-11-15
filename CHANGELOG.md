@@ -1,3 +1,14 @@
+### v1.5.0
+Added auto peek classifieds option.
+Added a bolt icon to Automatic listings in Classifieds peek.
+Added hints for search scopes to the search bar.
+Improved classifieds auto-close. Page is now closed as soon as the form is sent instead of redirecting. This also fixes a few race conditions.
+Fixed SCM item search.
+Fixed modals not closing properly.
+Removed Firefox support.
+Removed rep.tf integration disable option, it is now always enabled.
+Removed quicklisting disable option, it is now always enabled.
+
 ### v1.4.10
 Multiple items in user backpacks can now be selected at once by holding down shift. Note: only works for items on the same backpack page.
 API error handling should now be more robust.

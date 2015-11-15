@@ -4,10 +4,12 @@ var Script = require('./script'),
 
 var queue, key;
 
+// Reference: https://lab.xpaw.me/steam_api_documentation.html
+
 function Icall(meta, callback, args) {
     var cat = meta.cat[0] !== 'I' ? 'I' + meta.cat : meta.cat,
         version = (typeof meta.version === 'string' ? meta.version : 'v000' + meta.version),
-        url = "http://api.steampowered.com/api/" + cat + "/" + meta.method + "/" + version + "/?key=" + key.key + "&",
+        url = "http://api.steampowered.com/api/" + cat + "/" + meta.method + "/" + version + "/?key=" + key.key + "&format=json&",
         i;
 
     args = args || {};
@@ -30,7 +32,13 @@ function Icall(meta, callback, args) {
 
         if (!success) {
             if (meta._fail) return;
-            // TODO: Write error handling code
+            // Note: Publisher-only mention this error too, be sure not to use them.
+            if (/<pre>key=<\/pre>/.test(resp)) {
+                meta._fail = true;
+                q(meta, callback, args);
+                key.remove();
+                key.load();
+            }
             return;
         }
 
@@ -53,9 +61,26 @@ exports.init = function () {
     key.extract = function (body) {
         return (body.match(/Key: ([ABCDEF0-9]{32})/) || [])[1];
     };
-    // TODO: implement .register
+    key.register = function () {
+        Script.GET("http://steamcommunity.com/dev/apikey", function (body) {
+            var sessid = body.match(/<input type="hidden" name="sessionid" value="([a-f\d]{24})">/);
+            if (!sessid) return; // Not signed into Steam
 
-    key.obtain();
+            Script.POST(
+                "http://steamcommunity.com/dev/registerkey",
+                function (body) {
+                    key.set(key.extract(body));
+                },
+                {data: "domain=github.com%2Fcaresx%2Fbackpacktf-enhancement-suite&agreeToTerms=agreed&sessionid=" + sessid}
+            );
+        });
+    }.bind(key);
+
+    key.load();
+};
+
+exports.available = function () {
+    return !!key.key;
 };
 
 exports.interface = exports.I = exports.call = q;

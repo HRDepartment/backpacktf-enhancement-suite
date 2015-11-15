@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.4.10.2
+// @version      1.5.0
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -41,8 +41,6 @@ Page.init();
 require('./api').init();
 
 Prefs.defaults({
-    reptf: {enabled: true},
-    quicklist: {enabled: true},
     lotto: {show: true},
     notifications: {updatecount: 'click'},
     pricetags: {
@@ -62,6 +60,7 @@ Prefs.defaults({
         signature: '',
         'signature-buy': '',
         autoclose: true,
+        autopeek: false,
         autofill: 'default'
     },
     homebg: {
@@ -85,7 +84,7 @@ function exec(mod) {
 }
 
 exec(require('./components/improvements'));
-if (Prefs.enabled('reptf')) exec(require('./components/reptf'));
+exec(require('./components/reptf'));
 exec(require('./components/quicklist')); // prefs checked inside main
 exec(require('./components/pricetags'));
 if (Prefs.enabled('changes')) exec(require('./components/changes'));
@@ -329,8 +328,8 @@ var ccCache, inst;
 
 var ccFormats = {
     "USD": {sym: "$", thousand: ",", decimal: "."},
-    "EUR": {sym: "€", thousand: " ", decimal: ","},
-    "RUB": {sym: " pуб.", thousand: "", decimal: ","},
+    "EUR": {sym: "€", thousand: " ", decimal: ",", trail: true},
+    "RUB": {sym: " pуб.", thousand: "", decimal: ",", trail: true},
     "GBP": {sym: "£", thousand: ",", decimal: "."},
 };
 
@@ -343,8 +342,7 @@ function symToAlpha(sym) {
 }
 
 function extractSymbol(str) {
-    var match = str.match(/(?:\$|€|£| pуб\.)/);
-    return match ? match[0] : "";
+    return (str.match(/(?:\$|€|£| pуб\.)/) || [])[0] || "";
 }
 
 function CC(rates) {
@@ -359,8 +357,8 @@ CC.prototype.convert = function (val, f, t) {
         !this.rates.hasOwnProperty(t)) return -1;
     if (f === t) return val;
 
-    if (this.base !== f) val *= this.rates[f];
-    return val * this.rates[t];
+    if (f !== this.base) return val * 1/this.rates[f];
+    else return val * this.rates[t];
 };
 
 CC.prototype.convertFromBase = function (val, t) { return this.convert(val, this.base, t); };
@@ -371,7 +369,7 @@ CC.prototype.parse = function (str) {
         format = ccFormats[alpha] || {},
         val = parseFloat(str.replace(new RegExp(format.thousand, "g"), '').replace(format.decimal, '.').replace(/[^\d|\.]+/g, '').trim());
 
-    return {val: val, sym: sym, alpha: alpha, matched: sym !== ''};
+    return {val: val, sym: sym, alpha: alpha, trailing: format.trail || false, matched: sym !== ''};
 };
 
 function update(then) {
@@ -426,18 +424,7 @@ function applyArrows(changes) {
         hash, o, price, elems, od,
         value, diff, icon, html;
 
-    function addIcon(el) {
-        var elem = $(el),
-            stack = elem.find('.icon-stack');
-
-        if (!stack.length) {
-            elem.append('<div class="icon-stack"></div>');
-            stack = elem.find('.icon-stack');
-        }
-
-        stack.append(html);
-    }
-
+    function addIcon(el) { Page.addItemIcon(el, html); }
     for (hash in changes) {
         o = changes[hash];
         price = o.price;
@@ -562,9 +549,9 @@ function onMenuActionClick() {
         .append("<p><i>Showing price changes from the past " + ts.join(" and ") + "</i></p>")
         .append($("<div id='change-cloned' class='row'/>").append(elems));
 
-    Page.modal("Recent Price Changes", container.html()); // Firefox support, .html()
+    Page.modal("Recent Price Changes", container);
 
-    clones = $('.change-clone'); // FF support
+    clones = $('.change-clone');
     Page.addItemPopovers(clones, $("#change-cloned"));
     Page.addTooltips(clones.find('.change-tooltip'), '#change-cloned');
 }
@@ -641,7 +628,7 @@ function autofillLowest(clones, auto) {
     if (lowest) {
         metal.val(lowest.metal);
         keys.val(lowest.keys);
-        Script.exec("window.updateFormState();");
+        Script.window.updateFormState();
     }
 }
 
@@ -657,17 +644,19 @@ function peekload(html) {
         clones;
 
     $('.item', h).each(function () {
-        var clone = this.cloneNode(true);
+        var $this = $(this),
+            clone = this.cloneNode(true);
         clone.classList.add('classifieds-clone');
+        clone.dataset.listingAutomatic = !!$this.closest('.media.listing').find('.fa-flash').length;
 
         if (clone.dataset.listingIntent === '0') {
             buyers.push(clone);
         } else if (clone.dataset.listingIntent === '1') {
-            sellers.push(clone);
-        }
+            if (clone.dataset.listingAutomatic) {
+                Page.addItemIcon($this, '<div class="arrow-icon"><i class="fa fa-bolt"></i></div>');
+            }
 
-        if (autofillEnabled) {
-            clone.dataset.listingAutomatic = !!$(this).closest('.media.listing').find('.fa-flash').length;
+            sellers.push(clone);
         }
     });
 
@@ -702,13 +691,13 @@ function peekload(html) {
 }
 
 function peek(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     $.ajax({
         method: "GET",
         url: $('.item').data('listing-url'),
         dataType: "html"
-    }).success(peekload);
+    }).done(peekload);
 }
 
 function add(sig) {
@@ -720,11 +709,25 @@ function add(sig) {
         $details = $("#details");
 
     $('#page-content .row:eq(1)').before(htm);
-    $("#classifieds-peek").one('click', peek);
 
     if (!$details.val().length) {
         $details.val(signature);
         Script.exec('$("#details").trigger("blur");');
+    }
+
+    if (Prefs.pref('classifieds', 'autopeek')) peek();
+    else $("#classifieds-peek").one('click', peek);
+
+    if (Prefs.pref('classifieds', 'autoclose')) {
+        $("#classifieds-form").submit(function () {
+            $.post(location.pathname, $(this).serialize()).done(function () {
+                window.close();
+            }).fail(function () {
+                alert("Error occurred, try again later.");
+                $('#button_save').prop('disabled', true).html('Create Listing');
+            });
+            return false;
+        });
     }
 }
 
@@ -754,7 +757,7 @@ function addAutofill() {
             });
         }
 
-        Script.exec("window.updateFormState();");
+        Script.window.updateFormState();
     });
 }
 
@@ -767,24 +770,16 @@ function sell() {
     addAutofill();
 }
 
-function checkAutoclose() {
-    if (Prefs.pref('classifieds', 'autoclose') &&
-        /Your listing was posted successfully/.test($('.alert-success').text())) {
-        window.close();
-    }
-}
-
 function global() {
-    if ($('.listing-remove').length) addRemoveAllListings();
+    if (document.querySelector('.listing-remove')) addRemoveAllListings();
 }
 
 function load() {
     var pathname = location.pathname;
 
-         if (pathname.match(/\/classifieds\/buy\/.{1,}\/.{1,}\/.{1,}\/.{1,}\/?.*/)) buy();
-    else if (pathname.match(/\/classifieds\/relist\/.{1,}/)) buy();
-    else if (pathname.match(/\/classifieds\/sell\/.{1,}/)) sell();
-    else if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
+         if (/^\/classifieds\/buy\/.{1,}\/.{1,}\/.{1,}\/.{1,}\/?.*/.test(pathname)) buy();
+    else if (/^\/classifieds\/relist\/.{1,}/.test(pathname)) buy();
+    else if (/^\/classifieds\/sell\/.{1,}/.test(pathname)) sell();
     global();
 }
 
@@ -840,18 +835,13 @@ function addDupeCheck() {
 function bpDupeCheck() {
     var items = [];
 
-    if (!Page.bp().selectionMode) {
+    if (Page.bp().selectionMode) {
         return alert("Select the items you want to dupe-check first.");
     }
 
     $('.item:not(.spacer,.unselected):visible').each(function () {
         var $this = $(this),
-            stack = $this.find('.icon-stack');
-
-        if (!stack.length) {
-            $this.append('<div class="icon-stack"></div>');
-            stack = $this.find('.icon-stack');
-        }
+            stack = Page.addItemIcon($this);
 
         if (stack.find('.dupe-check-result').length) return;
 
@@ -883,11 +873,11 @@ function bpDupeCheck() {
             next();
         }
 
-        dc = Script.exec("window.dupeCache");
+        dc = Script.window.dupeCache;
         if (dc.hasOwnProperty(oid)) return applyIcon(dc[oid]);
         $.get("/item/" + oid, function (html) {
             var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
-            Script.exec("window.dupeCache[\"" + oid + "\"] = " + dupe + ";");
+            dc[oid] = dupe;
             applyIcon(dupe);
         });
     }());
@@ -929,10 +919,7 @@ function addMorePopovers(more) {
                 url = vote.find('.vote-stats li:eq(1) a').attr('href');
 
             function showPopover(html) {
-                fn({
-                    content: '"' + html.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, "\\n") + '"',
-                    placement: '"right"'
-                });
+                fn({content: html, placement: "right"});
             }
 
             if (moreCache[url]) return showPopover(moreCache[url]);
@@ -948,69 +935,7 @@ function addMorePopovers(more) {
                 moreLoading[url] = false;
             });
         },
-        delay: false
-    });
-}
-
-function itemShiftSelect() {
-    var backpack = Page.bp(),
-        $i = $('.item:not(.spacer)'),
-        $last, $select;
-
-    Script.exec("$('.item:not(.spacer)').off('click');");
-    $i.click(function (e) {
-        var $this = $(this),
-            $lidx;
-
-        if (!backpack.selectionMode) {
-            $last = null;
-            if ($this.siblings('.popover').length === 0) {
-                // Touchscreen compatibility.
-                // Makes it so a popover must be visible before selection mode can be activated.
-                return;
-            }
-
-            backpack.selectionMode = true;
-            Page.unselectItem($('.item'));
-            Page.selectItem($this);
-            backpack.updateClearSelectionState();
-        } else {
-            if ($this.hasClass('unselected')) {
-                if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
-                    e.preventDefault();
-                    document.getSelection().removeAllRanges();
-
-                    if ($lidx > $i.index($this)) {
-                        $select = $last.prevUntil($this);
-                    } else {
-                        $select = $last.nextUntil($this);
-                    }
-
-                    $last = $this;
-                    Page.selectItem($select.add($this));
-                } else {
-                    $last = $this;
-                    Page.selectItem($this);
-                }
-            } else {
-                $last = null;
-                Page.unselectItem($this);
-
-                if ($('.item:not(.unselected)').length === 0) {
-                    backpack.selectionMode = false;
-                    Page.selectItem($('.item'));
-                    backpack.updateClearSelectionState();
-                }
-            }
-        }
-
-        $('#clear-selection').click(function () {
-            if (!$(this).hasClass('disabled')) {
-                backpack.clearSelection();
-            }
-        });
-
-        backpack.updateValues();
+        delay: 0
     });
 }
 
@@ -1106,7 +1031,6 @@ function global() {
 
     if (Page.isBackpack()) {
         refValue();
-        itemShiftSelect();
     }
 
     addUnusualDetailsButtons();
@@ -1307,25 +1231,17 @@ function addTabContent() {
             userInputp('Buy order signature', 'classifieds', 'signature-buy', Prefs.pref('classifieds', 'signature-buy')),
             help("Message automatically inserted in the 'Message' field of Classified buy order listings you create manually."),
             buttonsyn('Auto-close when listed successfully', 'classifieds', 'autoclose'),
-            help("Automatically close the page you get (your Classifieds listings) whenever you successfully post a Classifieds listing manually. (Chrome only)"),
+            help("Automatically close the page when you successfully post a Classifieds listing manually."),
             buttonsChoice('Auto-fill price', 'classifieds', 'autofill', [
                 {value: 'backpack', label: 'backpack.tf'},
                 {value: 'lowestauto', label: "Lowest automatic listing"},
                 {value: 'lowest', label: "Lowest listing"},
                 {value: 'default', label: 'Disabled'},
             ]),
-            help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used manually. For those options, if there are no (automatic) listings, nothing will be auto-filled."),
-        ]),
+            help("Price to be used for new sell listings. Pricing and pricetag options (range, modifications) will be used to determine the backpack.tf price. The lowest listing is determined whenever peek is used (recommended to enable autopeek below). For those options, if there are no (automatic) listings, nothing will be done."),
+            buttonsyn('Auto-peek', 'classifieds', 'autopeek'),
 
-        section('Classifieds quicklisting', [
-            buttonsyn('Enabled', 'quicklist', 'enabled'),
-            help("Adds Select Page buttons to your profile. Once you have selected some items, click on the 'Quicklist selection' button. You can select a pre-defined price/message (click the button below) or enter them on the spot. The items will be listed sequentially with the price and message you provided. Only Team Fortress 2 is supported."),
-            button('Modify Presets', 'modify-quicklists')
-        ]),
-
-        section('rep.tf integration', [
-            buttonsyn('Enabled', 'reptf', 'enabled'),
-            help("Adds a rep.tf button to mini profiles and profile pages. Easily check a user's rep.tf bans by going to their profile page. The + next to Community will be green (clean) or red (has bans). Click on it to see who issued the bans and their reasoning.")
+            button('Modify Quicklisting Presets', 'modify-quicklists')
         ]),
 
         section('Pricing', [
@@ -1615,8 +1531,8 @@ function applyTagsToItems(items) {
             s = {},
             o;
 
-        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440'
-              || (di === '5002' || di === '5001' || di === '5000')) return; // ignore metal
+        if ((!ds.pBptf && !ds.pScmAll) || ds.vote || ds.app !== '440' ||
+             (di === '5002' || di === '5001' || di === '5000')) return; // ignore metal
 
         var price = listing ? Pricing.fromListing(ec, ds.listingPrice) : Pricing.fromBackpack(ec, ds.pBptf || ds.pScmAll.split(',')[0]),
             value = price.value,
@@ -1698,15 +1614,14 @@ function load() {
 
 module.exports = load;
 
-module.exports.setupInst = setupInst;
-module.exports.applyTagsToItems = applyTagsToItems;
-module.exports.enabled = enabled;
+exports.setupInst = setupInst;
+exports.applyTagsToItems = applyTagsToItems;
+exports.enabled = enabled;
 
 },{"../page":23,"../preferences":24,"../pricing":25,"../script":26}],11:[function(require,module,exports){
 var Page = require('../page'),
     Script = require('../script'),
-    DataStore = require('../datastore'),
-    Prefs = require('../preferences');
+    DataStore = require('../datastore');
 
 var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short":{"keys":["k","k"],"metal":["r","r"]}},
     defaults = [
@@ -1832,10 +1747,11 @@ function selectQuicklist() {
 
 function addEventListeners() {
     $(document).on('click', '.ql-action-button', onActionButtonClick);
-    $('.item:not(.spacer)').click(updateSelectQuicklist);
 
     $("#bp-custom-select-ql").click(function () {
-        if (Page.bp().selectionMode) selectQuicklist();
+        if (Page.bp().selectionMode) {
+            selectQuicklist();
+        }
     });
 }
 
@@ -1888,7 +1804,7 @@ function listItem(id, value, sample, then) {
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !Script.exec("confirm('Error occured, continue listing?');")) return;
+        if (!ok && !Script.window.confirm('Error occured, continue listing?')) return;
         if (then) then();
     });
 }
@@ -1953,14 +1869,13 @@ function modifyQuicklists() {
 }
 
 function addSelectPage() {
-    var backpack = Page.bp();
-
+    var bp = Page.bp();
     function selectItems(items) {
-        backpack.selectionMode = true;
+        bp.selectionMode = true;
         Page.selectItem(items);
 
-        backpack.updateClearSelectionState();
-        backpack.updateValues();
+        bp.updateClearSelectionState();
+        bp.updateValues();
         updateSelectQuicklist();
     }
 
@@ -1969,7 +1884,7 @@ function addSelectPage() {
 
         if (!pageitems.length) return;
 
-        if (backpack.selectionMode) {
+        if (bp.selectionMode) {
             if (pageitems.length === pageitems.not('.unselected').length) { // all == selected
                 Page.unselectItem(pageitems);
 
@@ -1978,7 +1893,7 @@ function addSelectPage() {
                     return;
                 }
             } else {
-                Page.selectItems(pageitems);
+                selectItems(pageitems);
             }
         } else {
             Page.unselectItem($('.item'));
@@ -2018,11 +1933,76 @@ function addHooks() {
     });
 
     Script.exec(
-        "$(function () {"+ // FF support
-            "var old_updateDisplay = window.backpack.updateDisplay;"+
-            addSelectPageButtons+
-            "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }"+
-        "});");
+        "var old_updateDisplay = window.backpack.updateDisplay;"+
+        addSelectPageButtons+
+        "window.backpack.updateDisplay = function () { old_updateDisplay.call(window.backpack); addSelectPageButtons(); }"
+    );
+}
+
+function addItemShiftClick() {
+    var $i = $('.item:not(.spacer)'),
+        bp = Page.bp(),
+        $last, $select;
+
+    Script.exec("$('.item:not(.spacer)').off('click');");
+    $i.click(function (e) {
+        var $this = $(this),
+            $lidx;
+
+        updateSelectQuicklist();
+
+        if (!bp.selectionMode) {
+            $last = null;
+            if ($this.siblings('.popover').length === 0) {
+                // Touchscreen compatibility.
+                // Makes it so a popover must be visible before selection mode can be activated.
+                return;
+            }
+
+            bp.selectionMode = true;
+            Page.unselectItem($('.item'));
+            Page.selectItem($this);
+            $last = $this;
+
+            bp.updateClearSelectionState();
+        } else {
+            if ($this.hasClass('unselected')) {
+                if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
+                    e.preventDefault();
+                    document.getSelection().removeAllRanges();
+
+                    if ($lidx > $i.index($this)) {
+                        $select = $last.prevUntil($this);
+                    } else {
+                        $select = $last.nextUntil($this);
+                    }
+
+                    $last = $this;
+                    Page.selectItem($select.add($this));
+                } else {
+                    $last = $this;
+                    Page.selectItem($this);
+                }
+            } else {
+                $last = null;
+                Page.unselectItem($this);
+
+                if ($('.item:not(.unselected)').length === 0) {
+                    bp.selectionMode = false;
+                    Page.selectItem($('.item'));
+                    bp.updateClearSelectionState();
+                }
+            }
+        }
+
+        $('#clear-selection').click(function () {
+            if (!$(this).hasClass('disabled')) {
+                bp.clearSelection();
+            }
+        });
+
+        bp.updateValues();
+    });
 }
 
 function load() {
@@ -2033,9 +2013,10 @@ function load() {
         addHooks();
         addSelectPage();
         addSelectPageButtons();
+        addItemShiftClick();
     }
 
-    if (!Page.isUserBackpack() || Page.appid() !== 440 || !Prefs.enabled('quicklist')) return;
+    if (!Page.isUserBackpack() || Page.appid() !== 440) return;
 
     addQuicklistPanelButtons();
     addEventListeners();
@@ -2044,7 +2025,7 @@ function load() {
 module.exports = load;
 module.exports.modifyQuicklists = modifyQuicklists;
 
-},{"../datastore":19,"../page":23,"../preferences":24,"../script":26}],12:[function(require,module,exports){
+},{"../datastore":19,"../page":23,"../script":26}],12:[function(require,module,exports){
 var MenuActions = require('../menu-actions');
 var Script = require('../script');
 
@@ -2408,7 +2389,8 @@ var appids = {};
 appids.tf = appids.tf2 = 440;
 appids.cs = appids.csgo = appids.go = 730;
 appids.dota = appids.dota2 = appids.dt = appids.dt2 = 570;
-appids.scm = appids.market = appids.steam = 1;
+appids.steam = appids.stm = 753;
+appids.scm = appids.market = 1;
 
 var Search = {
     _req: null,
@@ -2420,6 +2402,7 @@ var Search = {
         qualities: appQualities,
         names: appnames
     },
+    hints: [],
 
     request: function (attrs, then) {
         if (this._req) this._req.abort();
@@ -2457,6 +2440,9 @@ var Search = {
             Search.scopes[name] = o;
         });
     },
+    hint: function (title, hint) {
+        this.hints.push('<p class="hint-title">' + title + '</p><p class="hint">' + hint + '</p>');
+    },
     include: function (o) {
         o.register(Search);
     },
@@ -2482,7 +2468,8 @@ function checkCustom(query) {
 }
 
 function addEventListeners() {
-    var inst = Script.exec("$('#navbar-search').data('instance')");
+    var inst = Script.window.$('#navbar-search').data('instance'),
+        old_showHints = inst.showHints;
 
     Script.exec('$("#navbar-search").off("keyup");');
 
@@ -2497,12 +2484,19 @@ function addEventListeners() {
             inst.lastQuery = query;
         }
     });
+
+    inst.showHints = function () {
+        old_showHints.call(inst);
+        inst.$dropdown.find('li:nth(1)').append(Search.hints.join(""));
+    };
+
+    inst.showHints();
 }
 
 function loadScopes() {
     Search.include(require('./searchscopes/scm'));
-    Search.include(require('./searchscopes/classifieds'));
     Search.include(require('./searchscopes/unusuals'));
+    Search.include(require('./searchscopes/classifieds'));
 }
 
 function load() {
@@ -2601,7 +2595,10 @@ function render(content) {
 }
 
 exports.register = function (s) {
+    Search = s;
     s.register(["classifieds", "classified", "cl", "c"], {load: request, render: render});
+    s.hint("Classifieds sell orders",
+           "Type c: followed by the name of the item. For fine-grained searches, use the item name,quality,tradable,craftable format like Warmer,unique,+,-");
 };
 
 },{"../../page":23,"../../pricing":25}],16:[function(require,module,exports){
@@ -2633,7 +2630,7 @@ function parseQuery(response) {
 
         items.push({
             img: $this.find('.market_listing_item_img').attr('src'),
-            price: $this.find('.market_table_value span:first').text(),
+            price: $this.find('.market_table_value span:last').text(),
             qty: $this.find('.market_listing_num_listings_qty').text(),
             name: $this.find('.market_listing_item_name').text(),
             url: this.href,
@@ -2682,59 +2679,69 @@ function styleGame(iname, appid) {
 
 function processCustomResults(items) {
     var searchbox = $('.site-search-dropdown'),
-        results = $("<ul>"),
+        results = "",
         descs = {},
-        idesc;
+        scope = {},
+        idesc,
+        i, c, low, high;
 
-    function appendres(i) { results.append(i); }
+    function appendres(i) { results += "<li>" + i.html() + "</li>"; }
 
-    searchbox.show();
-    if (items) {
-        items.forEach(function (i) {
-            // 10/10 Steam
-            if (i.qty === "0") return;
-
-            var element = $('<li class="mini-suggestion">'), // for proper styles
-                links = $('<div class="buttons">'),
-                desc = i.description,
-                descid = Search.apps.names[desc],
-                styl = styleGame(i.name, descid),
-                name = styl.name,
-                pricecc = cc.parse(i.price);
-
-            if (!pricecc.matched) {
-                searchbox.append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
-                return;
-            }
-
-            i.price = "$" + cc.convertToBase(pricecc.val, pricecc.alpha).toFixed(2);
-
-            links
-                .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
-                        ' title="' + ec.format(ec.scm(ec.parse(i.price)).seller, EconCC.Mode.Long) + '">' + i.price + '</a>')
-                .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
-            ;
-
-            element
-                .append("<div class='item-mini scm-search-tooltip'" + (styl.style ? " style='" + styl.style + "' title='" + styl.qualityName + "'" : "") + ">"+
-                        "<img src='" + i.img + "'></div>")
-                .append("<div class='item-name'>" + name + "</div>")
-                .append(links)
-            ;
-
-            descs[desc] = descs[desc] || [];
-            descs[desc].push(element);
-        });
-
-        for (idesc in descs) {
-            results.append("<li class='header'>" + idesc + "</li>");
-            descs[idesc].forEach(appendres);
-        }
-    } else {
-        results.append('<li class="header">No results found.</li>');
+    searchbox.empty();
+    if (!items) {
+        return searchbox.html('<li class="header">No results found.</li>');
     }
 
-    searchbox.html(results.html());
+    for (c = 0; c < items.length; c += 1) {
+        i = items[c];
+        // 10/10 Steam
+        if (i.qty === "0") continue;
+
+        var element = $('<li class="mini-suggestion">'), // for proper styles
+            links = $('<div class="buttons">'),
+            desc = i.description,
+            descid = Search.apps.names[desc],
+            styl = styleGame(i.name, descid),
+            name = styl.name,
+            pricecc = cc.parse(i.price);
+
+        if (!pricecc.matched) {
+            searchbox.append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
+            return;
+        }
+
+        if (pricecc.alpha !== "USD") {
+            low = cc.convert(ec.currencies.usd.low, "USD", pricecc.alpha);
+            if (ec.currencies.usd.high) high = cc.convert(ec.currencies.usd.high, "USD", pricecc.alpha);
+            scope = {currencies: {usd: {symbol: pricecc.sym, low: low, high: high, pos: {sym: pricecc.trailing ? "end" : "start"}}, metal: {low: low, high: high}}};
+        }
+
+        // jshint -W083
+        ec.scope(scope, function () {
+            links
+                .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
+                        ' title="' + ec.format(ec.scm(ec.parse(pricecc.val + " usd")).seller, EconCC.Mode.Long) + '">' + i.price + '</a>')
+                .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
+            ;
+        });
+
+        element
+            .append("<div class='item-mini scm-search-tooltip'" + (styl.style ? " style='" + styl.style + "' title='" + styl.qualityName + "'" : "") + ">"+
+                    "<img src='" + i.img + "'></div>")
+            .append("<div class='item-name'>" + name + "</div>")
+            .append(links)
+        ;
+
+        descs[desc] = descs[desc] || [];
+        descs[desc].push(element);
+    }
+
+    for (idesc in descs) {
+        results += "<li class='header'>" + idesc + "</li>";
+        descs[idesc].forEach(appendres);
+    }
+
+    searchbox.html(results);
     Page.addTooltips($('.scm-search-tooltip'), '.site-search-dropdown');
 }
 
@@ -2754,6 +2761,7 @@ exports.register = function (s) {
     }
 
     s.register(names, {load: requestQuery, render: parseQuery});
+    s.hint("SCM Item Prices", "Type scm:, tf:, cs:, or dt: followed by the name of the item.");
 };
 
 },{"../../page":23,"../../pricing":25,"../cc":4}],17:[function(require,module,exports){
@@ -2817,6 +2825,7 @@ function render(unusuals, search) {
 exports.register = function (s) {
     Search = s;
     s.register(["unusuals", "unusual", "u"], {load: request, render: render});
+    s.hint("Unusual price indices", "Type u: followed by the name of the item.");
 };
 
 },{}],18:[function(require,module,exports){
@@ -3010,7 +3019,7 @@ Key.prototype.set = function (key) {
 };
 
 Key.prototype.remove = function () {
-    this.key = null;
+    this.key = '';
     DataStore.removeItem(this.field);
 };
 
@@ -3148,7 +3157,7 @@ exports.init = function () {
             state.ownprofile = state.ownid === state.steamid;
         }
 
-        state.token = Script.exec("window.userID") || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
+        state.token = Script.window.userID || menu.find('.fa-sign-out').parent().attr('href').replace(/(.*?=)/, '');
         state.ownbackpack = state.ownprofile && state.backpack;
     }
 
@@ -3200,65 +3209,42 @@ exports.addTooltips = function (elem, container) {
 // fn is bound to this, remember to wrap strings in ""
 // if content/placement is str, variable elem refers to the element
 exports.addPopovers = function (item, container, handlers) {
-    item.each(function () {
-        var $this = $(this),
-            self = this,
-            id = Script.uniq();
+    item.mouseenter(function () {
+        var $this = $(this);
+        if ($this.parent().hasClass('item-list-links')) {
+            return;
+        }
 
-        $this.mouseenter(function () {
-            if ($this.parent().hasClass('item-list-links')) {
-                return;
-            }
+        function next(fn) {
+            var content, placement;
+            fn = fn || {};
 
-            function next(h) {
-                var content, placement,
-                    fn = h ? h : handlers;
+            content = typeof fn.content === "function" ? fn.content.call($this) : fn.content;
+            placement = typeof fn.placement === "function" ? fn.placement.call($this) : fn.placement;
 
-                content = typeof fn.content === "function" ? fn.content.call(this, id) : fn.content;
-                placement = typeof fn.placement === "function" ? fn.placement.call(this, id) : fn.placement;
-
-                // Firefox support
-                $this.attr('data-bes-id', id);
-                Script.exec(
-                    '(function () {'+
-                        'var elem = $("[data-bes-id=\\"' + id + '\\"]");'+
-                        'elem.popover({animation: false, html: true, trigger: "manual", ' + (placement ? 'placement: ' + placement + ', ' : '') + 'content: ' + content + '});'+
-                    '}());'
-                );
-
-                setTimeout(function () {
-                    if ($this.filter(':hover').length) {
-                        // Firefox support
-                        Script.exec(
-                            '(function () {'+
-                                'var popover = $("[data-bes-id=\\"' + id + '\\"]");'+
-                                '$(".popover").remove(); popover.popover("show"); popover.style.padding = 0;'+
-                                (fn.show ? '(' + fn.show + ').call(popover, "' + id + '");' : '')+
-                            '}());'
-                        );
-                    }
-                }, fn.delay ? 300 : 0);
-            }
-
-            if (handlers.next) handlers.next.call(this, next.bind(this));
-            else next.call(this);
-        }).mouseleave(function () {
+            $this.popover({animation: false, html: true, trigger: "manual", placement: placement, content: content});
             setTimeout(function () {
-                var id = self.getAttribute('data-bes-id');
-                if (!$this.filter(':hover').length && !$('.popover:hover').length) {
-                    // Firefox support
-                    Script.exec(
-                        '(function () {'+
-                            'var popover = $("[data-bes-id=\\"' + id + '\\"]");'+
-                            'popover.popover("hide");'+
-                            (handlers.hide ? '(' + handlers.hide + ').call(popover, "' + id + '");' : '')+
-                        '}());'
-                    );
+                if ($this.filter(':hover').length) {
+                    $(".popover").remove();
+                    $this.popover("show");
+                    $this[0].style.padding = 0;
+                    if (fn.show) fn.show.call($this);
                 }
-            }, 100);
-        }).on('shown.bs.popover', function () {
-            Script.exec("$('.popover-timeago').timeago();");
-        });
+            }, fn.delay || 0);
+        }
+
+        if (handlers.next) handlers.next.call($this, next);
+        else next(handlers);
+    }).mouseleave(function () {
+        var $this = $(this);
+        setTimeout(function () {
+            if (!$this.filter(':hover').length && !$('.popover:hover').length) {
+                $this.popover("hide");
+                if (handlers.hide) handlers.hide.call($this);
+            }
+        }, 100);
+    }).on('shown.bs.popover', function () {
+        Script.exec("$('.popover-timeago').timeago();");
     });
 
     if (container) {
@@ -3278,10 +3264,10 @@ exports.addPopovers = function (item, container, handlers) {
 
 exports.addItemPopovers = function (item, container) {
     exports.addPopovers(item, container, {
-        content: 'window.createDetails(elem)',
-        placement: 'window.get_popover_placement',
+        content: function () { return Script.window.createDetails(this); },
+        placement: function () { return Script.window.get_popover_placement; },
         show: function () {
-            var ds = this.dataset,
+            var ds = this[0].dataset,
                 di = ds.defindex,
                 dq = ds.quality,
                 dpi = ds.priceindex,
@@ -3303,37 +3289,26 @@ exports.addItemPopovers = function (item, container) {
     });
 };
 
-exports.modal = function (titleContent, bodyContent, footerContent){
-    var active_modal = $('<div class="modal fade" id="active-modal"/>'),
-        dialog = $('<div class="modal-dialog"/>'),
-        content = $('<div class="modal-content"/>'),
-        header = $('<div class="modal-header"/>'),
-        body = $('<div class="modal-body"/>'),
-        footer = $('<div class="modal-footer" />'),
-        headerClose = $('<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>'),
-        title = $('<h4 class="modal-title"/>');
+// don't pass html to return just an icon stack
+exports.addItemIcon = function (el, html) {
+    var elem = $(el),
+        stack = elem.find('.icon-stack');
 
-    $('#active-modal').remove();
-    $('.modal-backdrop').remove();
+    if (!stack.length) {
+        elem.append('<div class="icon-stack"></div>');
+        stack = elem.find('.icon-stack');
+    }
 
-    footerContent = footerContent === undefined ? $('<a class="btn btn-default" data-dismiss="modal">Dismiss</a>') : footerContent;
-
-    $('#page-content').append(active_modal.append(
-        dialog.append(
-            content.append(
-                header.append(headerClose).append(title.append(titleContent))
-            ).append(body.append(bodyContent)).append(footer.append(footerContent))
-        )
-    ));
-
-    Script.exec('$("#active-modal").modal();');
+    if (!html) return stack;
+    return stack.append(html);
 };
 
+exports.modal = function () { return Script.window.modal.apply(Script.window, arguments); };
 exports.hideModal = function () {
-    $("#active-modal").remove();
+    $("#active-modal, .modal-backdrop").remove();
 };
 
-exports.bp = function () { return Script.exec("window.backpack"); };
+exports.bp = function () { return Script.window.backpack; };
 exports.selectItem = function (e) { e.removeClass('unselected'); };
 exports.unselectItem = function (e) { e.addClass('unselected'); };
 
@@ -3514,7 +3489,11 @@ exports.fromBackpack = function (ec, price) {
 var counter = 0;
 
 /* jshint -W061 */
-exports.exec = function (code) { return window.eval(code); };
+exports.exec = function (code) {
+    return window.eval(code);
+};
+
+exports.window = unsafeWindow;
 
 exports.xhr = GM_xmlhttpRequest;
 exports.VERB = function (url, load, args, method) {

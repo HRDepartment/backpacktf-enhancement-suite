@@ -26,7 +26,7 @@ function parseQuery(response) {
 
         items.push({
             img: $this.find('.market_listing_item_img').attr('src'),
-            price: $this.find('.market_table_value span:first').text(),
+            price: $this.find('.market_table_value span:last').text(),
             qty: $this.find('.market_listing_num_listings_qty').text(),
             name: $this.find('.market_listing_item_name').text(),
             url: this.href,
@@ -75,59 +75,69 @@ function styleGame(iname, appid) {
 
 function processCustomResults(items) {
     var searchbox = $('.site-search-dropdown'),
-        results = $("<ul>"),
+        results = "",
         descs = {},
-        idesc;
+        scope = {},
+        idesc,
+        i, c, low, high;
 
-    function appendres(i) { results.append(i); }
+    function appendres(i) { results += "<li>" + i.html() + "</li>"; }
 
-    searchbox.show();
-    if (items) {
-        items.forEach(function (i) {
-            // 10/10 Steam
-            if (i.qty === "0") return;
-
-            var element = $('<li class="mini-suggestion">'), // for proper styles
-                links = $('<div class="buttons">'),
-                desc = i.description,
-                descid = Search.apps.names[desc],
-                styl = styleGame(i.name, descid),
-                name = styl.name,
-                pricecc = cc.parse(i.price);
-
-            if (!pricecc.matched) {
-                searchbox.append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
-                return;
-            }
-
-            i.price = "$" + cc.convertToBase(pricecc.val, pricecc.alpha).toFixed(2);
-
-            links
-                .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
-                        ' title="' + ec.format(ec.scm(ec.parse(i.price)).seller, EconCC.Mode.Long) + '">' + i.price + '</a>')
-                .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
-            ;
-
-            element
-                .append("<div class='item-mini scm-search-tooltip'" + (styl.style ? " style='" + styl.style + "' title='" + styl.qualityName + "'" : "") + ">"+
-                        "<img src='" + i.img + "'></div>")
-                .append("<div class='item-name'>" + name + "</div>")
-                .append(links)
-            ;
-
-            descs[desc] = descs[desc] || [];
-            descs[desc].push(element);
-        });
-
-        for (idesc in descs) {
-            results.append("<li class='header'>" + idesc + "</li>");
-            descs[idesc].forEach(appendres);
-        }
-    } else {
-        results.append('<li class="header">No results found.</li>');
+    searchbox.empty();
+    if (!items) {
+        return searchbox.html('<li class="header">No results found.</li>');
     }
 
-    searchbox.html(results.html());
+    for (c = 0; c < items.length; c += 1) {
+        i = items[c];
+        // 10/10 Steam
+        if (i.qty === "0") continue;
+
+        var element = $('<li class="mini-suggestion">'), // for proper styles
+            links = $('<div class="buttons">'),
+            desc = i.description,
+            descid = Search.apps.names[desc],
+            styl = styleGame(i.name, descid),
+            name = styl.name,
+            pricecc = cc.parse(i.price);
+
+        if (!pricecc.matched) {
+            searchbox.append('<li class="header">Steam wallet currency unsupported</li>').append('<li><p class="hint">Your Steam wallet currency is not supported by this feature.</p></li>');
+            return;
+        }
+
+        if (pricecc.alpha !== "USD") {
+            low = cc.convert(ec.currencies.usd.low, "USD", pricecc.alpha);
+            if (ec.currencies.usd.high) high = cc.convert(ec.currencies.usd.high, "USD", pricecc.alpha);
+            scope = {currencies: {usd: {symbol: pricecc.sym, low: low, high: high, pos: {sym: pricecc.trailing ? "end" : "start"}}, metal: {low: low, high: high}}};
+        }
+
+        // jshint -W083
+        ec.scope(scope, function () {
+            links
+                .append('<a class="btn btn-default btn-xs scm-search-tooltip" href="' + i.url + '"'+
+                        ' title="' + ec.format(ec.scm(ec.parse(pricecc.val + " usd")).seller, EconCC.Mode.Long) + '">' + i.price + '</a>')
+                .append('<a class="btn btn-default disabled btn-xs">' + i.qty + ' listed</a>')
+            ;
+        });
+
+        element
+            .append("<div class='item-mini scm-search-tooltip'" + (styl.style ? " style='" + styl.style + "' title='" + styl.qualityName + "'" : "") + ">"+
+                    "<img src='" + i.img + "'></div>")
+            .append("<div class='item-name'>" + name + "</div>")
+            .append(links)
+        ;
+
+        descs[desc] = descs[desc] || [];
+        descs[desc].push(element);
+    }
+
+    for (idesc in descs) {
+        results += "<li class='header'>" + idesc + "</li>";
+        descs[idesc].forEach(appendres);
+    }
+
+    searchbox.html(results);
     Page.addTooltips($('.scm-search-tooltip'), '.site-search-dropdown');
 }
 
@@ -147,4 +157,5 @@ exports.register = function (s) {
     }
 
     s.register(names, {load: requestQuery, render: parseQuery});
+    s.hint("SCM Item Prices", "Type scm:, tf:, cs:, or dt: followed by the name of the item.");
 };

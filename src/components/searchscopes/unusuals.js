@@ -58,4 +58,5 @@ function render(unusuals, search) {
 exports.register = function (s) {
     Search = s;
     s.register(["unusuals", "unusual", "u"], {load: request, render: render});
+    s.hint("Unusual price indices", "Type u: followed by the name of the item.");
 };

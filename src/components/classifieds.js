@@ -46,7 +46,7 @@ function autofillLowest(clones, auto) {
     if (lowest) {
         metal.val(lowest.metal);
         keys.val(lowest.keys);
-        Script.exec("window.updateFormState();");
+        Script.window.updateFormState();
     }
 }
 
@@ -62,17 +62,19 @@ function peekload(html) {
         clones;
 
     $('.item', h).each(function () {
-        var clone = this.cloneNode(true);
+        var $this = $(this),
+            clone = this.cloneNode(true);
         clone.classList.add('classifieds-clone');
+        clone.dataset.listingAutomatic = !!$this.closest('.media.listing').find('.fa-flash').length;
 
         if (clone.dataset.listingIntent === '0') {
             buyers.push(clone);
         } else if (clone.dataset.listingIntent === '1') {
-            sellers.push(clone);
-        }
+            if (clone.dataset.listingAutomatic) {
+                Page.addItemIcon($this, '<div class="arrow-icon"><i class="fa fa-bolt"></i></div>');
+            }
 
-        if (autofillEnabled) {
-            clone.dataset.listingAutomatic = !!$(this).closest('.media.listing').find('.fa-flash').length;
+            sellers.push(clone);
         }
     });
 
@@ -107,13 +109,13 @@ function peekload(html) {
 }
 
 function peek(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     $.ajax({
         method: "GET",
         url: $('.item').data('listing-url'),
         dataType: "html"
-    }).success(peekload);
+    }).done(peekload);
 }
 
 function add(sig) {
@@ -125,11 +127,25 @@ function add(sig) {
         $details = $("#details");
 
     $('#page-content .row:eq(1)').before(htm);
-    $("#classifieds-peek").one('click', peek);
 
     if (!$details.val().length) {
         $details.val(signature);
         Script.exec('$("#details").trigger("blur");');
+    }
+
+    if (Prefs.pref('classifieds', 'autopeek')) peek();
+    else $("#classifieds-peek").one('click', peek);
+
+    if (Prefs.pref('classifieds', 'autoclose')) {
+        $("#classifieds-form").submit(function () {
+            $.post(location.pathname, $(this).serialize()).done(function () {
+                window.close();
+            }).fail(function () {
+                alert("Error occurred, try again later.");
+                $('#button_save').prop('disabled', true).html('Create Listing');
+            });
+            return false;
+        });
     }
 }
 
@@ -159,7 +175,7 @@ function addAutofill() {
             });
         }
 
-        Script.exec("window.updateFormState();");
+        Script.window.updateFormState();
     });
 }
 
@@ -172,24 +188,16 @@ function sell() {
     addAutofill();
 }
 
-function checkAutoclose() {
-    if (Prefs.pref('classifieds', 'autoclose') &&
-        /Your listing was posted successfully/.test($('.alert-success').text())) {
-        window.close();
-    }
-}
-
 function global() {
-    if ($('.listing-remove').length) addRemoveAllListings();
+    if (document.querySelector('.listing-remove')) addRemoveAllListings();
 }
 
 function load() {
     var pathname = location.pathname;
 
-         if (pathname.match(/\/classifieds\/buy\/.{1,}\/.{1,}\/.{1,}\/.{1,}\/?.*/)) buy();
-    else if (pathname.match(/\/classifieds\/relist\/.{1,}/)) buy();
-    else if (pathname.match(/\/classifieds\/sell\/.{1,}/)) sell();
-    else if (pathname === '/classifieds' || pathname === '/classifieds/') checkAutoclose();
+         if (/^\/classifieds\/buy\/.{1,}\/.{1,}\/.{1,}\/.{1,}\/?.*/.test(pathname)) buy();
+    else if (/^\/classifieds\/relist\/.{1,}/.test(pathname)) buy();
+    else if (/^\/classifieds\/sell\/.{1,}/.test(pathname)) sell();
     global();
 }
 

@@ -1,7 +1,6 @@
 var Page = require('../page'),
     Script = require('../script'),
-    DataStore = require('../datastore'),
-    Prefs = require('../preferences');
+    DataStore = require('../datastore');
 
 var currencyNames = {"long":{"keys":["key","keys"],"metal":["ref","ref"]},"short":{"keys":["k","k"],"metal":["r","r"]}},
     defaults = [
@@ -127,10 +126,11 @@ function selectQuicklist() {
 
 function addEventListeners() {
     $(document).on('click', '.ql-action-button', onActionButtonClick);
-    $('.item:not(.spacer)').click(updateSelectQuicklist);
 
     $("#bp-custom-select-ql").click(function () {
-        if (Page.bp().selectionMode) selectQuicklist();
+        if (Page.bp().selectionMode) {
+            selectQuicklist();
+        }
     });
 }
 
@@ -183,7 +183,7 @@ function listItem(id, value, sample, then) {
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !Script.exec("confirm('Error occured, continue listing?');")) return;
+        if (!ok && !Script.window.confirm('Error occured, continue listing?')) return;
         if (then) then();
     });
 }
@@ -248,14 +248,13 @@ function modifyQuicklists() {
 }
 
 function addSelectPage() {
-    var backpack = Page.bp();
-
+    var bp = Page.bp();
     function selectItems(items) {
-        backpack.selectionMode = true;
+        bp.selectionMode = true;
         Page.selectItem(items);
 
-        backpack.updateClearSelectionState();
-        backpack.updateValues();
+        bp.updateClearSelectionState();
+        bp.updateValues();
         updateSelectQuicklist();
     }
 
@@ -264,7 +263,7 @@ function addSelectPage() {
 
         if (!pageitems.length) return;
 
-        if (backpack.selectionMode) {
+        if (bp.selectionMode) {
             if (pageitems.length === pageitems.not('.unselected').length) { // all == selected
                 Page.unselectItem(pageitems);
 
@@ -273,7 +272,7 @@ function addSelectPage() {
                     return;
                 }
             } else {
-                Page.selectItems(pageitems);
+                selectItems(pageitems);
             }
         } else {
             Page.unselectItem($('.item'));
@@ -313,11 +312,76 @@ function addHooks() {
     });
 
     Script.exec(
-        "$(function () {"+ // FF support
-            "var old_updateDisplay = window.backpack.updateDisplay;"+
-            addSelectPageButtons+
-            "window.backpack.updateDisplay = function () { old_updateDisplay.call(this); addSelectPageButtons(); }"+
-        "});");
+        "var old_updateDisplay = window.backpack.updateDisplay;"+
+        addSelectPageButtons+
+        "window.backpack.updateDisplay = function () { old_updateDisplay.call(window.backpack); addSelectPageButtons(); }"
+    );
+}
+
+function addItemShiftClick() {
+    var $i = $('.item:not(.spacer)'),
+        bp = Page.bp(),
+        $last, $select;
+
+    Script.exec("$('.item:not(.spacer)').off('click');");
+    $i.click(function (e) {
+        var $this = $(this),
+            $lidx;
+
+        updateSelectQuicklist();
+
+        if (!bp.selectionMode) {
+            $last = null;
+            if ($this.siblings('.popover').length === 0) {
+                // Touchscreen compatibility.
+                // Makes it so a popover must be visible before selection mode can be activated.
+                return;
+            }
+
+            bp.selectionMode = true;
+            Page.unselectItem($('.item'));
+            Page.selectItem($this);
+            $last = $this;
+
+            bp.updateClearSelectionState();
+        } else {
+            if ($this.hasClass('unselected')) {
+                if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
+                    e.preventDefault();
+                    document.getSelection().removeAllRanges();
+
+                    if ($lidx > $i.index($this)) {
+                        $select = $last.prevUntil($this);
+                    } else {
+                        $select = $last.nextUntil($this);
+                    }
+
+                    $last = $this;
+                    Page.selectItem($select.add($this));
+                } else {
+                    $last = $this;
+                    Page.selectItem($this);
+                }
+            } else {
+                $last = null;
+                Page.unselectItem($this);
+
+                if ($('.item:not(.unselected)').length === 0) {
+                    bp.selectionMode = false;
+                    Page.selectItem($('.item'));
+                    bp.updateClearSelectionState();
+                }
+            }
+        }
+
+        $('#clear-selection').click(function () {
+            if (!$(this).hasClass('disabled')) {
+                bp.clearSelection();
+            }
+        });
+
+        bp.updateValues();
+    });
 }
 
 function load() {
@@ -328,9 +392,10 @@ function load() {
         addHooks();
         addSelectPage();
         addSelectPageButtons();
+        addItemShiftClick();
     }
 
-    if (!Page.isUserBackpack() || Page.appid() !== 440 || !Prefs.enabled('quicklist')) return;
+    if (!Page.isUserBackpack() || Page.appid() !== 440) return;
 
     addQuicklistPanelButtons();
     addEventListeners();

@@ -22,18 +22,7 @@ function applyArrows(changes) {
         hash, o, price, elems, od,
         value, diff, icon, html;
 
-    function addIcon(el) {
-        var elem = $(el),
-            stack = elem.find('.icon-stack');
-
-        if (!stack.length) {
-            elem.append('<div class="icon-stack"></div>');
-            stack = elem.find('.icon-stack');
-        }
-
-        stack.append(html);
-    }
-
+    function addIcon(el) { Page.addItemIcon(el, html); }
     for (hash in changes) {
         o = changes[hash];
         price = o.price;
@@ -158,9 +147,9 @@ function onMenuActionClick() {
         .append("<p><i>Showing price changes from the past " + ts.join(" and ") + "</i></p>")
         .append($("<div id='change-cloned' class='row'/>").append(elems));
 
-    Page.modal("Recent Price Changes", container.html()); // Firefox support, .html()
+    Page.modal("Recent Price Changes", container);
 
-    clones = $('.change-clone'); // FF support
+    clones = $('.change-clone');
     Page.addItemPopovers(clones, $("#change-cloned"));
     Page.addTooltips(clones.find('.change-tooltip'), '#change-cloned');
 }
