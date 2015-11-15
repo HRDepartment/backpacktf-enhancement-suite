@@ -3,7 +3,7 @@
 // @name         backpack.tf enhancement suite
 // @namespace    http://steamcommunity.com/id/caresx/
 // @author       cares
-// @version      1.5.0
+// @version      1.5.0.1
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
@@ -1614,9 +1614,10 @@ function load() {
 
 module.exports = load;
 
-exports.setupInst = setupInst;
-exports.applyTagsToItems = applyTagsToItems;
-exports.enabled = enabled;
+// leave module.
+module.exports.setupInst = setupInst;
+module.exports.applyTagsToItems = applyTagsToItems;
+module.exports.enabled = enabled;
 
 },{"../page":23,"../preferences":24,"../pricing":25,"../script":26}],11:[function(require,module,exports){
 var Page = require('../page'),

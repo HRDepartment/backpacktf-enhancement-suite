@@ -126,6 +126,7 @@ function load() {
 
 module.exports = load;
 
-exports.setupInst = setupInst;
-exports.applyTagsToItems = applyTagsToItems;
-exports.enabled = enabled;
+// leave module.
+module.exports.setupInst = setupInst;
+module.exports.applyTagsToItems = applyTagsToItems;
+module.exports.enabled = enabled;
