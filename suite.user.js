@@ -1,26 +1,27 @@
 /*!
 // ==UserScript==
 // @name         backpack.tf enhancement suite
-// @namespace    http://steamcommunity.com/id/caresx/
-// @author       cares
-// @version      1.5.0.1
+// @namespace    http://steamcommunity.com/id/theoddball
+// @author       cares with edits by The Oddball
+// @version      1.6.5.1
 // @description  Enhances your backpack.tf experience.
 // @include      /^https?://.*\.?backpack\.tf/.*$/
 // @exclude      /^https?://forums\.backpack\.tf/.*$/
 // @require      https://caresx.github.io/backpacktf-enhancement-suite/deps.js
-// @downloadURL  https://caresx.github.io/backpacktf-enhancement-suite/suite.user.js
-// @updateURL    https://caresx.github.io/backpacktf-enhancement-suite/suite.meta.js
+// @downloadURL  https://theoddball.github.io/oddBES/suite.user.js
+// @updateURL    https://theoddball.github.io/oddBES/suite.meta.js
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
+// @require      https://gist.githubusercontent.com/Fiskie/b3eb298e4af8734d63ec/raw/a89780567dcb5b3d1a60b03d90cf9b4731978a72/inventory.js
 // ==/UserScript==
 */
 
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /*!
  * backpack.tf Enhancement Suite - enhancing your backpack.tf experience
- * Made by cares <http://steamcommunity.com/id/caresx>
+ * Made by cares <http://steamcommunity.com/id/caresx> and The Oddball <http://steamcommunity.com/id/theoddball>
  *
  * Post feedback + view instuctions:
    http://forums.backpack.tf/index.php?/topic/36130-backpacktf-enhancement-suite/
@@ -662,12 +663,12 @@ function peekload(html) {
 
     if (sellers.length) {
         $ppb.append('<h5>Sellers</h5><div id="classifieds-sellers" class="row"></div>');
-        $("#classifieds-sellers").html(sellers);
+        $("#classifieds_sellers").html(sellers);
     }
 
     if (buyers.length) {
         $ppb.append('<h5>Buyers</h5><div id="classifieds-buyers" class="row"></div>');
-        $("#classifieds-buyers").html(buyers);
+        $("#classifieds_buyers").html(buyers);
     }
 
     if (!sellers.length && !buyers.length) {
@@ -799,7 +800,7 @@ function addDupeCheck() {
 
     function checkDuped(oid, btn) {
         $.get("/item/" + oid, function (html) {
-            var dupe = /Refer to entries in the item history <strong>where the item ID is not chronological/.test(html);
+            var dupe = /At least two versions of this item exist. Items with non-chronological IDs are highlighted in red./.test(html);
             window.dupeCache[oid] = dupe;
             window.addDupeWarn(btn, dupe);
         });
@@ -834,10 +835,6 @@ function addDupeCheck() {
 
 function bpDupeCheck() {
     var items = [];
-
-    if (Page.bp().selectionMode) {
-        return alert("Select the items you want to dupe-check first.");
-    }
 
     $('.item:not(.spacer,.unselected):visible').each(function () {
         var $this = $(this),
@@ -958,10 +955,10 @@ function addUnusualDetailsButtons() {
         var details = window.uDetails_createDetails(item),
             data = item[0].dataset;
 
-        if (data.app === "440" && data.quality === "5" && data.effectName) {
+        if (data.app === "440" && data.quality === "5" && data.effect_name) {
             details.find('.fa-list-alt').parent().after(
                 '<a class="btn btn-default btn-xs" href="/unusuals/' + data.name + '"><i class="fa fa-diamond"></i> Unusual</a>'+
-                '<a class="btn btn-default btn-xs" href="/effects/' + data.effectName + '"><i class="fa fa-paper-plane-o"></i> Effect</a>'
+                '<a class="btn btn-default btn-xs" href="/effects/' + data.effect_name + '"><i class="fa fa-magic"></i> Effect</a>'
             );
 
         }
@@ -977,8 +974,8 @@ function thirdPartyPrices() {
     if (Prefs.pref('other', 'thirdpartyprices')) return;
 
     function createDetails(item) {
-        var statsName = item.data('converted-from') ? item.data('converted-from') : item.data('name');
-        var friendlyUrl = '/' + item.data('q-name') + '/' + encodeURIComponent(statsName) + '/' + (item.data('tradable') == 1 ? "Tradable" : "Non-Tradable") + '/' + (item.data('craftable') == 1 ? "Craftable" : "Non-Craftable");
+        var statsName = item.data('converted_from') ? item.data('converted_from') : item.data('name');
+        var friendlyUrl = '/' + item.data('q_name') + '/' + encodeURIComponent(statsName) + '/' + (item.data('tradable') == 1 ? "Tradable" : "Non-Tradable") + '/' + (item.data('craftable') == 1 ? "Craftable" : "Non-Craftable");
 
         if (item.data('priceindex') && item.data('priceindex') !== 0) {
             friendlyUrl += '/' + item.data('priceindex');
@@ -1579,9 +1576,9 @@ function applyTagsToItems(items) {
     });
 
     // Clear price cache for updateValues()
-    if (clear && Page.bp()) {
+    if (clear && inventory) {
         Script.exec('$(".item").removeData("price");');
-        Page.bp().updateValues();
+        updateValues();
     }
 
     if (tooltips) {
@@ -1648,7 +1645,7 @@ function addQuicklistPanelButtons() {
 }
 
 function updateSelectQuicklist() {
-    $("#bp-custom-select-ql").toggleClass("disabled", !Page.bp().selectionMode);
+    $("#bp-custom-select-ql").toggleClass("disabled", !inventory.selectionMode);
 }
 
 function onActionButtonClick() {
@@ -1664,13 +1661,13 @@ function onActionButtonClick() {
 }
 
 function findSample() {
-    return $('[data-listing-offers-url]').first();
+    return $('[data-listing_offers_url]').first();
 }
 
 function currentSelection() {
     return $('.item:not(.spacer,.unselected,.ql-cloned):visible').filter(function () {
         var item = $(this);
-        return item.data("can-sell") && !item.data("listing-steamid");
+        return item.data("can_sell") && !item.data("listing_steamid");
     });
 }
 
@@ -1750,7 +1747,7 @@ function addEventListeners() {
     $(document).on('click', '.ql-action-button', onActionButtonClick);
 
     $("#bp-custom-select-ql").click(function () {
-        if (Page.bp().selectionMode) {
+        if (inventory.selectionMode) {
             selectQuicklist();
         }
     });
@@ -1763,8 +1760,9 @@ function listSelection(value) {
         items = [],
         at = 0;
 
-    _clearSelection();
-    Page.bp().updateClearSelectionState();
+		clearSelection();
+		updateSelectQuicklist();
+		updateClearSelectionState();
 
     selection.each(function () {
         var $this = $(this);
@@ -1787,9 +1785,9 @@ function listSelection(value) {
 function listItem(id, value, sample, then) {
     var payload = {
         details: value.message,
-        offers: +!!sample.data('listing-offers-url'), // value -> bool -> int
-        buyout: sample.data('listing-buyout'),
-        tradeoffer_url: sample.data('listing-offers-url'),
+        offers: +!!sample.data('listing_offers_url'), // value -> bool -> int
+        buyout: sample.data('listing_buyout'),
+        tradeoffer_url: sample.data('listing_offers_url'),
         'user-id': Page.csrfToken(),
         currencies: {
             metal: value.metal,
@@ -1799,13 +1797,12 @@ function listItem(id, value, sample, then) {
 
     // id: current item id
     $.post("http://backpack.tf/classifieds/sell/" + id, payload, function (page) {
-        var ok = /<i class="fa fa-check-circle"><\/i> Your listing was posted successfully. <\/div>/.test(page),
+        var ok = /<div class="panel-heading">Sell Orders<\/div>/.test(page),
             item = $('[data-id="' + id + '"]');
 
         item.css('opacity', 0.6).data('can-sell', 0)
             .find('.tag.bottom-right').html(ok ? '<i class="fa fa-tag"></i> ' + qlFormatValue(value, false) : '<i class="fa fa-exclamation-circle" style="color:red"></i>');
 
-        if (!ok && !Script.window.confirm('Error occured, continue listing?')) return;
         if (then) then();
     });
 }
@@ -1837,6 +1834,96 @@ function copyButtonValues(value, elem) {
         elem.find('.ql-' + i).val(value[i] || (i === "message" ? "" : "0"));
     }
 }
+
+if (Page.isBackpack()) {
+    inventory.clearSelection = function() {
+        if (inventory.selectionMode) {
+            selectItem($('.item'));
+            disableSelectionMode();
+            updateValues();
+            updateClearSelectionState();
+        }
+    };
+}
+
+function disableSelectionMode() {
+    inventory.selectionMode = false;
+    ITEM_POPOVERS_DISABLED = false;
+};
+
+function updateValues() {
+    var li,
+        totalkeys = 0,
+        totalmetal = 0,
+        curvalue = 0,
+        marketvalue = 0,
+        totalitems = 0;
+
+    if (inventory.selectionMode) {
+        li = $('.item:not(.spacer,.unselected):visible');
+    } else {
+        li = $('.item:not(.spacer):visible');
+    }
+
+    li.each(function () {
+        // only count items
+        totalitems++;
+        curvalue = curvalue + parseFloat($(this).data('price'));
+
+        if ($(this).data('market-p') && $(this).data('market-p') != -1) {
+            marketvalue += $(this).data('market-p');
+        }
+
+        if ($(this).data('app') == 440) {
+            switch ($(this).data('defindex')) {
+                case 5000:
+                    totalmetal += 0.111111;
+                    break;
+
+                case 5001:
+                    totalmetal += 0.333333;
+                    break;
+
+                case 5002:
+                    totalmetal++;
+                    break;
+            }
+        }
+
+        if ($(this).data('is-key')) {
+            totalkeys++;
+        }
+    });
+
+    if (totalmetal % 1 >= 0.9) {
+        // If it's x.99, round up
+        totalmetal = Math.round(totalmetal);
+    }
+
+    $('#keycount').html(totalkeys.format());
+    $('#metalcount').html((Math.floor(totalmetal * 100) / 100).toFixed(2));
+    $('#refinedvalue').html(Math.round(curvalue).format());
+    $('#dollarvalue').html(Math.round(curvalue * rawValue).format());
+    $('#marketvalue').html(Math.round(marketvalue / 100).format());
+    $('#totalitems').html(totalitems.format());
+};
+
+function clearSelection() {
+    if (inventory.selectionMode) {
+        selectItem($('.item'));
+        disableSelectionMode();
+		updateValues();
+		updateClearSelectionState();
+    }
+};
+
+function updateClearSelectionState() {
+    if (inventory.selectionMode) {
+        $('#clear-selection').removeClass('disabled');
+    } else {
+        $('#clear-selection').addClass('disabled');
+    }
+};
 
 function modifyQuicklists() {
     var html =
@@ -1870,13 +1957,13 @@ function modifyQuicklists() {
 }
 
 function addSelectPage() {
-    var bp = Page.bp();
+    var bp = inventory;
     function selectItems(items) {
-        bp.selectionMode = true;
+        inventory.selectionMode = true;
         Page.selectItem(items);
 
-        bp.updateClearSelectionState();
-        bp.updateValues();
+        updateClearSelectionState();
+        updateValues();
         updateSelectQuicklist();
     }
 
@@ -1885,12 +1972,14 @@ function addSelectPage() {
 
         if (!pageitems.length) return;
 
-        if (bp.selectionMode) {
+        if (inventory.selectionMode) {
             if (pageitems.length === pageitems.not('.unselected').length) { // all == selected
                 Page.unselectItem(pageitems);
 
                 if ($('.item:not(.unselected)').length === 0) {
-                    _clearSelection();
+                        clearSelection();
+						updateSelectQuicklist();
+						updateValues();
                     return;
                 }
             } else {
@@ -1901,11 +1990,6 @@ function addSelectPage() {
             selectItems(pageitems);
         }
     });
-}
-
-function _clearSelection() {
-    Page.bp().clearSelection();
-    updateSelectQuicklist();
 }
 
 function addSelectPageButtons() {
@@ -1927,7 +2011,7 @@ function addSelectPageButtons() {
 }
 
 function addHooks() {
-    $('#clear-selection').click(function () {
+    $('clear-selection').click(function () {
         if (!$(this).hasClass('disabled')) {
             updateSelectQuicklist();
         }
@@ -1942,7 +2026,7 @@ function addHooks() {
 
 function addItemShiftClick() {
     var $i = $('.item:not(.spacer)'),
-        bp = Page.bp(),
+        bp = inventory,
         $last, $select;
 
     Script.exec("$('.item:not(.spacer)').off('click');");
@@ -1952,7 +2036,7 @@ function addItemShiftClick() {
 
         updateSelectQuicklist();
 
-        if (!bp.selectionMode) {
+        if (!inventory.selectionMode) {
             $last = null;
             if ($this.siblings('.popover').length === 0) {
                 // Touchscreen compatibility.
@@ -1960,12 +2044,12 @@ function addItemShiftClick() {
                 return;
             }
 
-            bp.selectionMode = true;
+            inventory.selectionMode = true;
             Page.unselectItem($('.item'));
             Page.selectItem($this);
             $last = $this;
 
-            bp.updateClearSelectionState();
+            updateClearSelectionState();
         } else {
             if ($this.hasClass('unselected')) {
                 if (e.shiftKey && $last && $last.not('.unselected') && ($lidx = $i.index($last)) !== -1) {
@@ -1989,20 +2073,21 @@ function addItemShiftClick() {
                 Page.unselectItem($this);
 
                 if ($('.item:not(.unselected)').length === 0) {
-                    bp.selectionMode = false;
+                    inventory.selectionMode = false;
                     Page.selectItem($('.item'));
-                    bp.updateClearSelectionState();
+                    updateClearSelectionState();
+					updateValues();
                 }
             }
         }
 
         $('#clear-selection').click(function () {
             if (!$(this).hasClass('disabled')) {
-                bp.clearSelection();
+                disableSelectionMode();
             }
         });
 
-        bp.updateValues();
+        updateValues();
     });
 }
 
@@ -2059,7 +2144,9 @@ function updateBackpack(steamid, next) {
 }
 
 function findSteamid(refresh) {
-    return refresh.closest('.media.listing').find('.media-object').find('li').data('listing-steamid');
+    var accountId = refresh.closest('.media.listing').find('.media-object').find('li').data('listing_account_id');
+    var steamId = Math.abs(accountId + 76561197960265728);
+    return steamId
 }
 
 function addButtonListeners() {
@@ -2846,7 +2933,14 @@ var BadgeSupporter = {
     icon: 'fa-trophy',
 };
 
-var badgemap = [BadgeSelfMade, BadgeSupporter];
+var BadgeHelper = {
+    title: 'Collaborator',
+    content: 'I helped create Enhancement Suite!',
+    style: 'border-color:#ff1ab1;background-color:#ff66cb;box-shadow:inset 0 0 0px #ff1ab1;',
+    icon: 'fa-code'
+};
+
+var badgemap = [BadgeSelfMade, BadgeSupporter, BadgeHelper];
 var ID_PREFIX = "7656119";
 
 function iconinf(item, particle, margins) {
@@ -2858,7 +2952,7 @@ function iconinf(item, particle, margins) {
         if (typeof margins === 'number') o.lmargin = o.rmargin = margins;
         else {
             o.lmargin = margins[0];
-            o.rmargin = margins[1];
+			o.rmargin = margins[1];
         }
     } else {
         o.lmargin = o.rmargin = -4;
@@ -2869,22 +2963,22 @@ function iconinf(item, particle, margins) {
 
 var users = {
     8070299574: {badges: [0], color: '#028482'},
-    8039453751: {badges: [1], icon: ['soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf', 14, [-4, -4]]},
+    8039453751: {badges: [1], icon: ['soldier_hat.61b68df2672217c4d2a2c98e3ed5e386a389d5cf', 14, [-4, -4]], font: ["TimesNewRoman, Times New Roman, Times, Baskerville, Georgia, serif"]},
     8068022595: {badges: [1], color: '#f9d200'},
     8107654171: {badges: [1], color: '#0b1c37', icon: ['xms2013_demo_plaid_hat.152c6db9806406bd10fd82bd518de3c89ccb6fad', 58, [-7, -8]]},
     8067575136: {badges: [1], icon: ['xms_pyro_parka.de5a5f80e74f428204a4f4a7d094612173adbe50', 13, [-9, -12]]},
     8044195191: {badges: [1], icon: ['fez.ee87ed452e089760f1c9019526d22fcde9ec2450', 43, [-2, -4]]},
-
     8056198948: {badges: [1], icon: ['jul13_soldier_fedora.ec4971943386c378e174786b6302d058e4e8627a', 10, [-5, -6]]},
     8165677507: {badges: [1], color: '#FF6000', icon: ['cc_summer2015_potassium_bonnett.3849871e2fe2b96fb41209de62defa59b136f038', 38, [-5, -6]]},
-
     8067795713: {badges: [1], color: '#000066', icon: ['soldier_warpig.e183081f85b5b2e3e9da1217481685613a3fed1f', 14, [-10, -11]]},
     7980709148: {badges: [1], color: '#A41408'},
-    8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]]},
+    8081201910: {badges: [1], color: '#CC0000', icon: ['hat_first_nr.e7cb3f5de1158e924aede8c3eeda31e920315f9a', 64, [-10, -11]], font: ["Optima, Segoe, Segoe UI, Candara, Calibri, Arial, sans-serif"]},
     8117484140: {badges: [1], color: '#00BBFF', icon: ['medic_ttg_max.5c4b7fcf10ab25fbd166831aea1979395549cb75', 13, [-10, -11]]},
     8005031515: {badges: [1], icon: ['demo_hood.2fa33d5d09dcbfed6345cf927db03c10170b341e', 29, [-2, -5]]},
     8076020691: {badges: [1], color: '#a0d126', icon: ['witchhat_demo.75012466ebcf4d9d81c6d7f75ca646b673114353', 6, [-6, -7]]},
-};
+    8048498731: {badges: [2, 0], color: '#9CDF59', icon: ['fall2013_the_cotton_head.38910f84b946d0afdc1b10a2674aa0a0278d822e', 19, [-5, -6]], font: ["Tahoma, Geneva, sans-serif"]},
+    8080179568: {badges: [2], icon: ['tooth_hat.c2014cb6315e2ce880058cdcd0a7569056b11260', 10, [-5, -6]]},
+	};
 
 function renderUserBadges(badges) {
     var html = '';
@@ -2905,19 +2999,23 @@ function badgePopovers() {
 }
 
 function changeUserColors(handle) {
-    handle.each(function () {
+    $('user-link').each(function () {
         var id = this.dataset.id || "",
             u = users[id.substr(ID_PREFIX.length)];
 
-        if (!u || !u.color) return;
+        if (!u || (!u.color && !u.font)) return;
 
-        this.style.fontWeight = 'bold';
+        this.style.fontWeight = '700';
         this.style.setProperty('color', u.color, 'important');
+        
+        if (u.font){
+        this.style.setProperty('font-family', u.font);
+        }
     });
 }
 
 function modifyBelts(handle) {
-    handle.each(function () {
+    $('user-link').each(function () {
         var id = this.dataset.id || "",
             u = users[id.substr(ID_PREFIX.length)],
             icon, belt, padding, lmargin, rmargin;
@@ -2925,7 +3023,7 @@ function modifyBelts(handle) {
         if (!u || !u.icon) return;
         icon = iconinf.apply(null, u.icon);
         belt = this.querySelector('.label-belt');
-
+        belt = this.querySelector('.belt');
         if (!belt) return;
 
         padding = icon.padding || 14;
@@ -2933,7 +3031,8 @@ function modifyBelts(handle) {
         if (icon.lmargin) lmargin = icon.lmargin;
         if (icon.rmargin) rmargin = icon.rmargin;
 
-        belt.innerHTML = '<span style="background-image:' + icon.img + ';background-size:contain;background-repeat:no-repeat;padding:' + padding + 'px;margin-left:' + lmargin + 'px;margin-right:' + rmargin + 'px;color: transparent;">★</span>';
+        belt.innerHTML = '<span style="background-image:' + icon.img + ';background-size:contain;background-repeat:no-repeat;padding:' + padding + 'px;margin-left:' + lmargin + 'px;margin-right:' + rmargin + 'px;text-shadow:none;color: transparent;">★</span>';
+
     });
 }
 

@@ -1,5 +1,8 @@
-# backpack.tf Enhancement Suite
+# Oddball's Enhancement Suite
 
-Thread here: http://forums.backpack.tf/index.php?/topic/36130-backpacktf-enhancement-suite/page-4
+Forums thread here: http://oddball.tf/suite
 
-Source code is in [src/](src/). Want the pre-compiled file? [suite.user.js](suite.user.js)
+If you're a regular user, click this to install: [suite.user.js](suite.user.js)
+
+
+ 

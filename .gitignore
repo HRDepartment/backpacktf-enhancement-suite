@@ -1,1 +1,7 @@
-node_modules
+bin
+obj
+oddBES.csproj
+oddBES.csproj.user
+oddBES.sln
+oddBES.vcxproj
+.vs

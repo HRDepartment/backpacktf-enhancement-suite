@@ -1,3 +1,28 @@
+### v1.6.5
+Really fixed Refresh User BP in classies.
+
+### v1.6.4
+Fixed refresh user bp in classies
+Added a new donor feature! Custom fonts! See the list here:
+http://www.cssfontstack.com/
+I won't add anything crazy or hard to read. I will moderate these, and if yours looks too crazy, I will reject it.
+=======
+### v1.6.3 - v1.6.3.2
+Fixed many more bugs
+
+### v1.6.1 & v1.6.2
+Fixed select page
+Fixed updating values (Thanks Zapperzz for reporting this!)
+
+### v1.6
+Fixed quicklisting (100% done!)
+Fixed dupe check
+
+### v1.5.1
+Fixed quicklisting.
+
+Now done by The Oddball and Julia!
+
 ### v1.5.0
 Added auto peek classifieds option.
 Added a bolt icon to Automatic listings in Classifieds peek.
